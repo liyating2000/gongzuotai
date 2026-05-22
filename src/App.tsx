@@ -3485,15 +3485,6 @@ const summaryLinkedCustomerFieldMap: Record<string, WorkbenchFieldConfig[]> = {
 const getSummaryLinkedCustomerFields = (productCategory?: string) =>
   (productCategory ? summaryLinkedCustomerFieldMap[productCategory] : undefined) ?? [];
 
-const getSummaryLinkedCustomerNotice = (productCategory?: string) => {
-  const linkedFields = getSummaryLinkedCustomerFields(productCategory);
-
-  if (!productCategory || linkedFields.length === 0) {
-    return null;
-  }
-
-  return `由于小结选中了“${productCategory}”，客户信息新增了“${linkedFields.map((field) => field.label).join('、')}”字段。`;
-};
 
 const getPortalGreetingByTime = (name: string, now: Date = new Date()) => {
   const hour = now.getHours();
@@ -4368,8 +4359,6 @@ export default function App() {
   const callLinkedCustomerFields = getSummaryLinkedCustomerFields(activeCallSummaryProductCategory);
   const onlineLinkedCustomerFields = getSummaryLinkedCustomerFields(activeOnlineSummaryProductCategory);
   const callCustomerFields = insertLinkedCustomerFields(workbenchCustomerFields, callLinkedCustomerFields, '业务类型');
-  const callCustomerLinkedNotice = getSummaryLinkedCustomerNotice(activeCallSummaryProductCategory);
-  const onlineCustomerLinkedNotice = getSummaryLinkedCustomerNotice(activeOnlineSummaryProductCategory);
   const handleResetCallCustomerFields = () => {
     setCallCustomerFieldValues({ ...callWorkbenchInboundProfile.customerFieldValues });
     setCallCustomerOpenSelect(null);
@@ -6082,7 +6071,6 @@ export default function App() {
 
   const callCustomerInfoPanelContent = (
     <CallCustomerInfoPanel
-      linkedNotice={callCustomerLinkedNotice}
       onReset={handleResetCallCustomerFields}
       onAddNew={handleAddNewCallCustomer}
       onQueryByPhone={handleQueryCallCustomerByPhone}
@@ -6258,7 +6246,6 @@ export default function App() {
       }}
       leftTopContent={
         <CallCustomerInfoPanel
-          linkedNotice={callCustomerLinkedNotice}
           onReset={handleResetCallCustomerFields}
           onAddNew={handleAddNewCallCustomer}
           onQueryByPhone={handleQueryCallCustomerByPhone}
@@ -6503,11 +6490,6 @@ export default function App() {
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                   <div className="space-y-4">
-                  {onlineCustomerLinkedNotice ? (
-                    <div className="rounded-[10px] border border-[#efc8c5] bg-[#fdf0ef] px-4 py-3 text-[12px] font-medium leading-6 text-slate-700">
-                      {onlineCustomerLinkedNotice}
-                    </div>
-                  ) : null}
                   <div className="flex items-center gap-3">
                     <div className="text-[11px] font-medium text-slate-600">匿名</div>
                     <button

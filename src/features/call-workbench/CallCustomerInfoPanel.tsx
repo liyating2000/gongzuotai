@@ -2,7 +2,6 @@ import { useState, type KeyboardEvent, type ReactNode } from 'react';
 import { FilePlus2, Search } from 'lucide-react';
 
 type CallCustomerInfoPanelProps = {
-  linkedNotice: string | null;
   fieldsContent: ReactNode;
   onReset: () => void;
   onAddNew?: () => void;
@@ -11,7 +10,6 @@ type CallCustomerInfoPanelProps = {
 };
 
 export default function CallCustomerInfoPanel({
-  linkedNotice,
   fieldsContent,
   onReset,
   onAddNew,
@@ -73,11 +71,6 @@ export default function CallCustomerInfoPanel({
         </div>
       </div>
       <div className="min-w-0 flex-1 overflow-y-auto p-4 custom-scrollbar">
-        {linkedNotice ? (
-          <div className="mb-4 rounded-[12px] border border-rose-200/70 bg-rose-50/70 px-4 py-3 text-[12px] font-medium leading-6 text-slate-700">
-            {linkedNotice}
-          </div>
-        ) : null}
         <div className="grid grid-cols-3 gap-3">
           {fieldsContent}
         </div>

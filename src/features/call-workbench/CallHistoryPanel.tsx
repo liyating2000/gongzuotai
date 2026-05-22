@@ -10,6 +10,7 @@ import {
   Volume2,
 } from 'lucide-react';
 import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 import { cn } from '../../lib/cn';
 import {
@@ -208,17 +209,7 @@ export function SmsContentList({ entries }: { entries: HistoryContentEntry[] }) 
     <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
       {entries.map((entry, index) => (
         <div key={index} className="px-3.5 py-3">
-          <div className="mb-1.5 flex items-center gap-2">
-            <span
-              className={cn(
-                'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                entry.direction === 'out'
-                  ? 'bg-brand-50 text-brand-600'
-                  : 'bg-emerald-50 text-emerald-600'
-              )}
-            >
-              {entry.direction === 'out' ? '发送' : '接收'}
-            </span>
+          <div className="mb-1.5">
             <span className="tabular-nums text-[11px] text-slate-400">{entry.time}</span>
           </div>
           <p className="text-[12px] leading-5 text-slate-700">{entry.content}</p>
@@ -228,33 +219,76 @@ export function SmsContentList({ entries }: { entries: HistoryContentEntry[] }) 
   );
 }
 
-/** Email list: card style with sender / recipient / subject / body — no bubbles. */
+/** Email list: card style with sender / recipient / subject — click to view detail. */
 export function EmailContentList({ entries }: { entries: HistoryContentEntry[] }) {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const activeEntry = activeIndex !== null ? entries[activeIndex] : null;
+
   return (
-    <div className="space-y-3">
-      {entries.map((entry, index) => (
-        <article
-          key={index}
-          className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_2px_6px_rgba(15,23,42,0.03)]"
+    <>
+      <div className="space-y-3">
+        {entries.map((entry, index) => (
+          <article
+            key={index}
+            onClick={() => setActiveIndex(index)}
+            className="cursor-pointer overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_2px_6px_rgba(15,23,42,0.03)] transition-colors hover:border-brand-200 hover:bg-brand-50/30"
+          >
+            <header className="flex items-start gap-2 px-3.5 py-2.5">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[12px] font-semibold text-slate-800">
+                  {entry.subject ?? '（无主题）'}
+                </div>
+                <div className="mt-0.5 truncate text-[11px] text-slate-500">
+                  <span className="font-medium text-slate-600">发件人:</span>{' '}
+                  {entry.sender ?? '-'}{' '}
+                  <span className="ml-2 font-medium text-slate-600">收件人:</span>{' '}
+                  {entry.recipient ?? '-'}
+                </div>
+              </div>
+              <span className="tabular-nums text-[11px] text-slate-400">{entry.time}</span>
+            </header>
+          </article>
+        ))}
+      </div>
+
+      {activeEntry ? createPortal(
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}
+          onClick={() => setActiveIndex(null)}
         >
-          <header className="flex items-start gap-2 border-b border-slate-100 bg-slate-50/60 px-3.5 py-2.5">
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[12px] font-semibold text-slate-800">
-                {entry.subject ?? '（无主题）'}
+          <div
+            style={{ width: 480, maxHeight: '80vh', borderRadius: 16, backgroundColor: '#fff', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', overflow: 'hidden' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
+                  {activeEntry.subject ?? '（无主题）'}
+                </div>
+                <div style={{ marginTop: 6, fontSize: 12, color: '#64748b' }}>
+                  <span style={{ fontWeight: 500, color: '#475569' }}>发件人:</span>{' '}
+                  {activeEntry.sender ?? '-'}{' '}
+                  <span style={{ marginLeft: 12, fontWeight: 500, color: '#475569' }}>收件人:</span>{' '}
+                  {activeEntry.recipient ?? '-'}
+                </div>
+                <div style={{ marginTop: 4, fontSize: 11, color: '#94a3b8' }}>{activeEntry.time}</div>
               </div>
-              <div className="mt-0.5 truncate text-[11px] text-slate-500">
-                <span className="font-medium text-slate-600">发件人:</span>{' '}
-                {entry.sender ?? '-'}{' '}
-                <span className="ml-2 font-medium text-slate-600">收件人:</span>{' '}
-                {entry.recipient ?? '-'}
-              </div>
+              <button
+                type="button"
+                onClick={() => setActiveIndex(null)}
+                style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 16 }}
+              >
+                ✕
+              </button>
             </div>
-            <span className="tabular-nums text-[11px] text-slate-400">{entry.time}</span>
-          </header>
-          <div className="px-3.5 py-3 text-[12px] leading-5 text-slate-700">{entry.content}</div>
-        </article>
-      ))}
-    </div>
+            <div style={{ padding: '16px 20px', fontSize: 13, lineHeight: 1.8, color: '#334155', maxHeight: 'calc(80vh - 100px)', overflowY: 'auto' }}>
+              {activeEntry.content}
+            </div>
+          </div>
+        </div>,
+        document.body
+      ) : null}
+    </>
   );
 }
 

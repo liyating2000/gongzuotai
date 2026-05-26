@@ -12,7 +12,12 @@ import {
   LogIn,
   LogOut,
   Lock,
+  MicOff,
+  Pause,
   Phone,
+  PhoneForwarded,
+  PhoneOff,
+  RefreshCw,
   Unlock,
   User,
   UserCog,
@@ -137,6 +142,8 @@ export default function MainHeader({
   // Dialer state
   const [dialNumber, setDialNumber] = useState('');
   const [isDialpadOpen, setIsDialpadOpen] = useState(false);
+  const [isInCall, setIsInCall] = useState(false);
+  const [callTransferModal, setCallTransferModal] = useState<'转接' | '直接转' | '会议' | null>(null);
   const dialpadRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -159,6 +166,8 @@ export default function MainHeader({
       setIsReady(false);
       setBreakValue('');
       setIsBreakMenuOpen(false);
+      setIsInCall(false);
+      setCallTransferModal(null);
     }
   }, [isTopHeaderSignedIn]);
 
@@ -178,19 +187,23 @@ export default function MainHeader({
 
   const computedStatusText = !isTopHeaderSignedIn
     ? '未签入'
-    : breakValue
-      ? `小休-${breakValue}`
-      : isReady
-        ? '准备好'
-        : '未准备好';
+    : isInCall
+      ? '通话中'
+      : breakValue
+        ? `小休-${breakValue}`
+        : isReady
+          ? '准备好'
+          : '未准备好';
 
   const computedStatusCls = !isTopHeaderSignedIn
     ? 'text-[#f59a23]'
-    : breakValue
-      ? 'text-violet-500'
-      : isReady
-        ? 'text-emerald-500'
-        : 'text-[#e0389a]';
+    : isInCall
+      ? 'text-blue-500'
+      : breakValue
+        ? 'text-violet-500'
+        : isReady
+          ? 'text-emerald-500'
+          : 'text-[#e0389a]';
 
   const extensionNumber = isTopHeaderSignedIn
     ? topHeaderPresenceMeta.extensionNumber
@@ -206,6 +219,18 @@ export default function MainHeader({
 
   const handleSignOutClick = () => {
     if (isTopHeaderSignedIn) onTogglePresence();
+  };
+
+  const handleDialCall = () => {
+    if (dialNumber.trim()) {
+      setIsInCall(true);
+      setIsDialpadOpen(false);
+    }
+  };
+
+  const handleHangUp = () => {
+    setIsInCall(false);
+    setCallTransferModal(null);
   };
 
   const handleToggleReadiness = () => {
@@ -342,35 +367,100 @@ export default function MainHeader({
 
               {/* Call control cluster */}
               <div className="flex items-center gap-2">
-                {/* 呼叫 */}
-                <button
-                  type="button"
-                  className="focus-ring flex h-[52px] w-[52px] flex-col items-center justify-center gap-1 rounded-xl bg-emerald-50 text-emerald-600 transition-colors hover:bg-emerald-100"
-                >
-                  <Phone size={16} strokeWidth={2.2} />
-                  <span className="text-[12px] font-semibold leading-none">呼叫</span>
-                </button>
+                {isInCall ? (
+                  <>
+                    {/* 挂断 */}
+                    <button
+                      type="button"
+                      onClick={handleHangUp}
+                      className="focus-ring flex h-[52px] w-[52px] flex-col items-center justify-center gap-1 rounded-xl bg-red-50 text-red-600 transition-colors hover:bg-red-100"
+                    >
+                      <PhoneOff size={16} strokeWidth={2.2} />
+                      <span className="text-[12px] font-semibold leading-none">挂断</span>
+                    </button>
 
-                {/* 示闲 / 示忙 */}
-                <button
-                  type="button"
-                  onClick={handleToggleReadiness}
-                  className={cn(
-                    'focus-ring flex h-[52px] w-[52px] flex-col items-center justify-center gap-1 rounded-xl transition-colors',
-                    isReady
-                      ? 'bg-sky-50 text-sky-600 hover:bg-sky-100'
-                      : 'bg-orange-50 text-orange-600 hover:bg-orange-100'
-                  )}
-                >
-                  {isReady ? (
-                    <Clock size={16} strokeWidth={2.2} />
-                  ) : (
-                    <Coffee size={16} strokeWidth={2.2} />
-                  )}
-                  <span className="text-[12px] font-semibold leading-none">
-                    {isReady ? '示忙' : '示闲'}
-                  </span>
-                </button>
+                    {/* 保持 */}
+                    <button
+                      type="button"
+                      className="focus-ring flex h-[52px] w-[52px] flex-col items-center justify-center gap-1 rounded-xl bg-amber-50 text-amber-600 transition-colors hover:bg-amber-100"
+                    >
+                      <Pause size={16} strokeWidth={2.2} />
+                      <span className="text-[12px] font-semibold leading-none">保持</span>
+                    </button>
+
+                    {/* 转接 */}
+                    <button
+                      type="button"
+                      onClick={() => setCallTransferModal('转接')}
+                      className="focus-ring flex h-[52px] w-[52px] flex-col items-center justify-center gap-1 rounded-xl bg-emerald-50 text-emerald-600 transition-colors hover:bg-emerald-100"
+                    >
+                      <PhoneForwarded size={16} strokeWidth={2.2} />
+                      <span className="text-[12px] font-semibold leading-none">转接</span>
+                    </button>
+
+                    {/* 直接转 */}
+                    <button
+                      type="button"
+                      onClick={() => setCallTransferModal('直接转')}
+                      className="focus-ring flex h-[52px] w-[52px] flex-col items-center justify-center gap-1 rounded-xl bg-blue-50 text-blue-600 transition-colors hover:bg-blue-100"
+                    >
+                      <PhoneForwarded size={16} strokeWidth={2.2} />
+                      <span className="text-[12px] font-semibold leading-none">直接转</span>
+                    </button>
+
+                    {/* 会议 */}
+                    <button
+                      type="button"
+                      onClick={() => setCallTransferModal('会议')}
+                      className="focus-ring flex h-[52px] w-[52px] flex-col items-center justify-center gap-1 rounded-xl bg-violet-50 text-violet-600 transition-colors hover:bg-violet-100"
+                    >
+                      <Users size={16} strokeWidth={2.2} />
+                      <span className="text-[12px] font-semibold leading-none">会议</span>
+                    </button>
+
+                    {/* 静音 */}
+                    <button
+                      type="button"
+                      className="focus-ring flex h-[52px] w-[52px] flex-col items-center justify-center gap-1 rounded-xl bg-cyan-50 text-cyan-600 transition-colors hover:bg-cyan-100"
+                    >
+                      <MicOff size={16} strokeWidth={2.2} />
+                      <span className="text-[12px] font-semibold leading-none">静音</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* 呼叫 */}
+                    <button
+                      type="button"
+                      onClick={handleDialCall}
+                      className="focus-ring flex h-[52px] w-[52px] flex-col items-center justify-center gap-1 rounded-xl bg-emerald-50 text-emerald-600 transition-colors hover:bg-emerald-100"
+                    >
+                      <Phone size={16} strokeWidth={2.2} />
+                      <span className="text-[12px] font-semibold leading-none">呼叫</span>
+                    </button>
+
+                    {/* 示闲 / 示忙 */}
+                    <button
+                      type="button"
+                      onClick={handleToggleReadiness}
+                      className={cn(
+                        'focus-ring flex h-[52px] w-[52px] flex-col items-center justify-center gap-1 rounded-xl transition-colors',
+                        isReady
+                          ? 'bg-sky-50 text-sky-600 hover:bg-sky-100'
+                          : 'bg-orange-50 text-orange-600 hover:bg-orange-100'
+                      )}
+                    >
+                      {isReady ? (
+                        <Clock size={16} strokeWidth={2.2} />
+                      ) : (
+                        <Coffee size={16} strokeWidth={2.2} />
+                      )}
+                      <span className="text-[12px] font-semibold leading-none">
+                        {isReady ? '示忙' : '示闲'}
+                      </span>
+                    </button>
+                  </>
+                )}
 
                 {/* 小休 */}
                 <button
@@ -432,15 +522,17 @@ export default function MainHeader({
                   ) : null}
                 </div>
 
-                {/* 签出 */}
-                <button
-                  type="button"
-                  onClick={handleSignOutClick}
-                  className="focus-ring flex h-[52px] w-[52px] flex-col items-center justify-center gap-1 rounded-xl bg-violet-50 text-violet-600 transition-colors hover:bg-violet-100"
-                >
-                  <LogOut size={16} strokeWidth={2.2} />
-                  <span className="text-[12px] font-semibold leading-none">签出</span>
-                </button>
+                {/* 签出 — hidden during active call */}
+                {!isInCall ? (
+                  <button
+                    type="button"
+                    onClick={handleSignOutClick}
+                    className="focus-ring flex h-[52px] w-[52px] flex-col items-center justify-center gap-1 rounded-xl bg-violet-50 text-violet-600 transition-colors hover:bg-violet-100"
+                  >
+                    <LogOut size={16} strokeWidth={2.2} />
+                    <span className="text-[12px] font-semibold leading-none">签出</span>
+                  </button>
+                ) : null}
               </div>
             </>
           ) : (
@@ -702,7 +794,197 @@ export default function MainHeader({
         isOpen={isChatModalOpen}
         onClose={() => setIsChatModalOpen(false)}
       />
+
+      {callTransferModal ? (
+        <CallTransferModal
+          title={callTransferModal}
+          onClose={() => setCallTransferModal(null)}
+        />
+      ) : null}
     </header>
+  );
+}
+
+const transferAgentRows = [
+  { id: 1, skillGroup: '王磊队列', agentNumber: '5002', status: '空闲' },
+  { id: 2, skillGroup: '李娜队列', agentNumber: '5004', status: '空闲' },
+];
+
+const transferSkillGroupRows = [
+  { id: 1, group: '售后部', name: '售后服务组' },
+  { id: 2, group: '售后部', name: '技术支持组' },
+  { id: 3, group: '客服部', name: 'VIP客户组' },
+];
+
+const skillGroupGroups = [...new Set(transferSkillGroupRows.map((r) => r.group))];
+
+function CallTransferModal({
+  title,
+  onClose,
+}: {
+  title: '转接' | '直接转' | '会议';
+  onClose: () => void;
+}) {
+  const [tab, setTab] = useState<'agent' | 'skillGroup'>('agent');
+  const [groupFilter, setGroupFilter] = useState<string>('');
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const actionLabel = title === '会议' ? '邀请' : '转接';
+
+  return (
+    <div
+      className="fixed inset-0 z-[130] flex items-start justify-center overflow-y-auto bg-slate-900/40 px-4 pb-8 pt-[10vh] backdrop-blur-[3px]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="transfer-modal-title"
+      onClick={onClose}
+    >
+      <div
+        className="animate-fade-in-up w-full max-w-[820px] overflow-hidden rounded-2xl bg-white shadow-[0_30px_80px_rgba(15,23,42,0.22)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-hairline px-6 py-4">
+          <div className="flex items-center gap-6">
+            <h2
+              id="transfer-modal-title"
+              className="text-[16px] font-bold tracking-tight text-slate-800"
+            >
+              {title}
+            </h2>
+            <div className="flex gap-4">
+              {([['agent', '坐席'], ['skillGroup', '技能组']] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setTab(key)}
+                  className={cn(
+                    'relative pb-1 text-[14px] font-medium transition-colors',
+                    tab === key
+                      ? 'text-brand-600'
+                      : 'text-slate-500 hover:text-slate-700'
+                  )}
+                >
+                  {label}
+                  {tab === key ? (
+                    <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-brand-600" />
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="focus-ring flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+            aria-label="刷新"
+          >
+            <RefreshCw size={16} />
+          </button>
+        </div>
+
+        {/* Table */}
+        <div className="min-h-[360px] px-6 py-2">
+          {tab === 'agent' ? (
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="border-b border-hairline text-left text-slate-500">
+                  <th className="w-[80px] py-3 font-medium">序号</th>
+                  <th className="py-3 font-medium">技能组</th>
+                  <th className="py-3 font-medium">工号</th>
+                  <th className="py-3 font-medium">状态</th>
+                  <th className="w-[100px] py-3 font-medium">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transferAgentRows.map((row) => (
+                  <tr key={row.id} className="border-b border-hairline/60">
+                    <td className="py-3 text-slate-600">{row.id}</td>
+                    <td className="py-3 text-slate-700">{row.skillGroup}</td>
+                    <td className="py-3 tabular-nums text-slate-700">{row.agentNumber}</td>
+                    <td className="py-3">
+                      <span className="text-emerald-600">{row.status}</span>
+                    </td>
+                    <td className="py-3">
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        className="text-[13px] font-medium text-brand-600 transition-colors hover:text-brand-700"
+                      >
+                        {actionLabel}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div>
+              <div className="flex items-center gap-3 py-3">
+                <label className="text-[13px] text-slate-500">组别筛选</label>
+                <select
+                  value={groupFilter}
+                  onChange={(e) => setGroupFilter(e.target.value)}
+                  className="rounded-lg border border-hairline bg-white px-3 py-1.5 text-[13px] text-slate-700 outline-none transition-colors hover:border-brand-300 focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20"
+                >
+                  <option value="">全部</option>
+                  {skillGroupGroups.map((g) => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </div>
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="border-b border-hairline text-left text-slate-500">
+                    <th className="w-[80px] py-3 font-medium">序号</th>
+                    <th className="py-3 font-medium">组别</th>
+                    <th className="py-3 font-medium">技能组名称</th>
+                    <th className="w-[100px] py-3 font-medium">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transferSkillGroupRows
+                    .filter((row) => !groupFilter || row.group === groupFilter)
+                    .map((row) => (
+                      <tr key={row.id} className="border-b border-hairline/60">
+                        <td className="py-3 text-slate-600">{row.id}</td>
+                        <td className="py-3 text-slate-700">{row.group}</td>
+                        <td className="py-3 text-slate-700">{row.name}</td>
+                        <td className="py-3">
+                          <button
+                            type="button"
+                            onClick={onClose}
+                            className="text-[13px] font-medium text-brand-600 transition-colors hover:text-brand-700"
+                          >
+                            {actionLabel}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end border-t border-hairline px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="focus-ring rounded-xl border border-hairline bg-white px-6 py-2 text-[13px] font-semibold text-slate-600 transition-colors hover:border-brand-200 hover:bg-brand-50/40 hover:text-brand-600"
+          >
+            关 闭
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -716,7 +998,7 @@ function SignInModal({
   const [agentNumber, setAgentNumber] = useState('1001');
   const [extensionNumber, setExtensionNumber] = useState('878881001');
   const [password, setPassword] = useState('');
-  const [method, setMethod] = useState<'browser' | 'mobile' | 'sip'>('browser');
+  const [method, setMethod] = useState<'browser' | 'sip'>('browser');
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -808,7 +1090,6 @@ function SignInModal({
               {(
                 [
                   { v: 'browser', label: '浏览器' },
-                  { v: 'mobile', label: '手机' },
                   { v: 'sip', label: 'SIP话机' },
                 ] as const
               ).map((opt) => (

@@ -91,6 +91,7 @@ type OnlineConversationPanelProps = {
   isSessionFinished: boolean;
   isSessionConnected: boolean;
   onSessionConnectionToggle: () => void;
+  onOpenTaggingModal?: () => void;
   transferAgentIconSrc: string;
   transferQueueIconSrc: string;
   conferenceIconSrc: string;
@@ -159,6 +160,7 @@ export default function OnlineConversationPanel({
   isSessionFinished,
   isSessionConnected,
   onSessionConnectionToggle,
+  onOpenTaggingModal,
   transferAgentIconSrc,
   transferQueueIconSrc,
   conferenceIconSrc,
@@ -373,6 +375,7 @@ export default function OnlineConversationPanel({
               ))}
               <button
                 type="button"
+                onClick={onOpenTaggingModal}
                 className="inline-flex items-center gap-1 rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-[11px] font-medium text-slate-500 transition-colors hover:border-brand-400 hover:bg-brand-50 hover:text-brand-600"
               >
                 <Plus size={12} strokeWidth={2.2} />

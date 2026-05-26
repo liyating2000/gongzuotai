@@ -73,6 +73,7 @@ type CallInboundInfoPanelProps = {
   hideDetails?: boolean;
   onScheduleFollowUp?: () => void;
   onBlacklist?: (anchor: { x: number; y: number }) => void;
+  onOpenTaggingModal?: () => void;
 };
 
 export default function CallInboundInfoPanel({
@@ -81,6 +82,7 @@ export default function CallInboundInfoPanel({
   hideDetails,
   onScheduleFollowUp,
   onBlacklist,
+  onOpenTaggingModal,
 }: CallInboundInfoPanelProps) {
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const queueTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -176,6 +178,7 @@ export default function CallInboundInfoPanel({
           ))}
           <button
             type="button"
+            onClick={onOpenTaggingModal}
             className="inline-flex items-center gap-1 rounded-full border border-dashed border-slate-300 px-2.5 py-[5px] text-[11px] font-medium leading-none text-slate-500 transition-colors hover:border-brand-400 hover:bg-brand-50 hover:text-brand-600"
           >
             <Plus size={12} strokeWidth={2.2} />

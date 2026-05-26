@@ -138,6 +138,7 @@ import CallHistoryPanel, {
 } from './features/call-workbench/CallHistoryPanel';
 import BlacklistApplicationModal from './features/call-workbench/BlacklistApplicationModal';
 import CallScheduleFollowUpModal from './features/call-workbench/CallScheduleFollowUpModal';
+import TaggingModal from './features/workbench/TaggingModal';
 import ProblemClassificationSearchModal, {
   type ProblemClassificationCombo,
 } from './features/workbench/ProblemClassificationSearchModal';
@@ -3632,6 +3633,7 @@ export default function App() {
   const [callBlockReason, setCallBlockReason] = useState('');
   const [showOnlineBlacklistModal, setShowOnlineBlacklistModal] = useState(false);
   const [showOnlineScheduleFollowUpModal, setShowOnlineScheduleFollowUpModal] = useState(false);
+  const [taggingModalSource, setTaggingModalSource] = useState<'call' | 'online' | null>(null);
   const [problemClassificationSearchScope, setProblemClassificationSearchScope] = useState<
     'call-summary' | 'online-summary' | null
   >(null);
@@ -3714,6 +3716,12 @@ export default function App() {
   const [isOnlineStatusMenuOpen, setIsOnlineStatusMenuOpen] = useState(false);
   const [callCustomerFieldValues, setCallCustomerFieldValues] =
     useState<WorkbenchFieldValues>(() => ({ ...callWorkbenchInboundProfile.customerFieldValues }));
+  const [callTags, setCallTags] = useState<Array<{ label: string; cls: string }>>(() => [...callWorkbenchInboundProfile.tags]);
+  const [onlineTagsBySession, setOnlineTagsBySession] = useState<Record<string, Array<{ label: string; cls: string }>>>(() =>
+    Object.fromEntries(
+      Object.entries(onlineSessionDetails).map(([id, detail]) => [id, [...detail.tags]])
+    )
+  );
   const [callCustomerOpenSelect, setCallCustomerOpenSelect] = useState<string | null>(null);
   const [callSummaryOpenSelect, setCallSummaryOpenSelect] = useState<string | null>(null);
   const [isCallAddNewMode, setIsCallAddNewMode] = useState(false);
@@ -4392,6 +4400,35 @@ export default function App() {
   };
   const handleCloseCallScheduleFollowUpModal = () => {
     setShowCallScheduleFollowUpModal(false);
+  };
+
+  const handleOpenTaggingModal = (source: 'call' | 'online') => {
+    setTaggingModalSource(source);
+  };
+  const handleCloseTaggingModal = () => {
+    setTaggingModalSource(null);
+  };
+  const handleRemoveTag = (label: string) => {
+    if (taggingModalSource === 'call') {
+      setCallTags((prev) => prev.filter((t) => t.label !== label));
+    } else if (taggingModalSource === 'online') {
+      setOnlineTagsBySession((prev) => ({
+        ...prev,
+        [activeOnlineSession.id]: (prev[activeOnlineSession.id] ?? []).filter((t) => t.label !== label),
+      }));
+    }
+  };
+  const handleAddTag = (label: string) => {
+    const newTag = { label, cls: 'border-rose-200 bg-rose-50 text-rose-500' };
+    if (taggingModalSource === 'call') {
+      setCallTags((prev) => (prev.some((t) => t.label === label) ? prev : [...prev, newTag]));
+    } else if (taggingModalSource === 'online') {
+      setOnlineTagsBySession((prev) => {
+        const current = prev[activeOnlineSession.id] ?? [];
+        if (current.some((t) => t.label === label)) return prev;
+        return { ...prev, [activeOnlineSession.id]: [...current, newTag] };
+      });
+    }
   };
 
   const activeHistoryMeta = historyTabMeta[callHistoryTab];
@@ -5211,6 +5248,12 @@ export default function App() {
       ? visibleOnlineSessions.find((session) => session.id === activeOnlineSessionId) ?? visibleOnlineSessions[0]
       : onlineSessions.find((session) => session.id === activeOnlineSessionId)) ?? fallbackOnlineSession;
   const activeOnlineSessionDetail = onlineSessionDetails[activeOnlineSession.id] ?? onlineSessionDetails['sess-2'];
+  const taggingModalTags =
+    taggingModalSource === 'call'
+      ? callTags
+      : taggingModalSource === 'online'
+        ? (onlineTagsBySession[activeOnlineSession.id] ?? [])
+        : [];
   const activeOnlineConversationMessages =
     onlineSessionMessagesBySession[activeOnlineSession.id] ?? activeOnlineSessionDetail.messages;
   const activeOnlineWithdrawNotice = onlineWithdrawNoticeBySession[activeOnlineSession.id] ?? null;
@@ -6091,9 +6134,10 @@ export default function App() {
 
   const callInboundInfoPanelContent = (
     <CallInboundInfoPanel
-      profile={callWorkbenchInboundProfile}
+      profile={{ ...callWorkbenchInboundProfile, tags: callTags }}
       onScheduleFollowUp={handleOpenCallScheduleFollowUpModal}
       onBlacklist={handleOpenCallBlockConfirm}
+      onOpenTaggingModal={() => handleOpenTaggingModal('call')}
     />
   );
 
@@ -6297,10 +6341,11 @@ export default function App() {
       }
       centerTopContent={
         <CallInboundInfoPanel
-          profile={isCallAddNewMode ? { inboundInfoItems: [], tags: [], ivrPath: '', transferSummary: '' } : callWorkbenchInboundProfile}
+          profile={isCallAddNewMode ? { inboundInfoItems: [], tags: [], ivrPath: '', transferSummary: '' } : { ...callWorkbenchInboundProfile, tags: callTags }}
           hideDetails={isCallAddNewMode}
           onScheduleFollowUp={handleOpenCallScheduleFollowUpModal}
           onBlacklist={handleOpenCallBlockConfirm}
+          onOpenTaggingModal={() => handleOpenTaggingModal('call')}
         />
       }
       rightSidebar={callRightSidebarContent}
@@ -6372,13 +6417,14 @@ export default function App() {
           customerName={activeOnlineSession.customer}
           entryCountLabel={onlineSessionEntryCountLabels[activeOnlineSession.id] ?? '首次进线'}
           visitorMeta={activeOnlineSessionDetail.visitorMeta}
-          tags={activeOnlineSessionDetail.tags}
+          tags={onlineTagsBySession[activeOnlineSession.id] ?? activeOnlineSessionDetail.tags}
           summaryCards={activeOnlineSessionDetail.summaryCards}
           isVisitorExpanded={isOnlineVisitorExpanded}
           onToggleVisitorExpanded={() => setIsOnlineVisitorExpanded((expanded) => !expanded)}
           isSessionFinished={isActiveOnlineSessionFinished}
           isSessionConnected={isOnlineSessionConnected}
           onSessionConnectionToggle={handleOnlineSessionConnectionToggle}
+          onOpenTaggingModal={() => handleOpenTaggingModal('online')}
           transferAgentIconSrc={onlineTransferAgentIcon}
           transferQueueIconSrc={onlineTransferQueueIcon}
           conferenceIconSrc={onlineConferenceIcon}
@@ -7813,6 +7859,14 @@ export default function App() {
             updateOnlineSummaryFieldValues(apply);
           }
         }}
+      />
+
+      <TaggingModal
+        isOpen={taggingModalSource !== null}
+        tags={taggingModalTags}
+        onClose={handleCloseTaggingModal}
+        onRemoveTag={handleRemoveTag}
+        onAddTag={handleAddTag}
       />
 
       {shouldRenderDirectorModal ? (

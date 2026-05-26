@@ -1091,6 +1091,15 @@ const initialProductManagementProductNames: readonly ProductManagementProductNam
     shortName: item.name,
   }));
 
+const associatedProductNameIds = new Set(
+  [
+    ...initialProblemClassificationLevelOneItems,
+    ...initialProblemClassificationLevelTwoItems,
+    ...initialProblemClassificationLevelThreeItems,
+    ...initialTicketTemplateItems,
+  ].map((item) => normalizeInitialProblemClassificationRelatedNodeId(item.relatedNodeId))
+);
+
 const defaultSelectedBusinessTypeName =
   initialProductManagementBusinessTypes.find((item) => item.enabled)?.name ??
   initialProductManagementBusinessTypes[0]?.name ??
@@ -1151,6 +1160,8 @@ type ProductManagementDeleteState =
       itemName: string;
       relatedCategoryCount: number;
       relatedProductCount: number;
+      blocked: boolean;
+      blockedReason: string;
     }
   | {
       type: 'product-category';
@@ -1158,6 +1169,8 @@ type ProductManagementDeleteState =
       businessTypeName: string;
       itemName: string;
       relatedProductCount: number;
+      blocked: boolean;
+      blockedReason: string;
     }
   | {
       type: 'product-name';
@@ -1165,6 +1178,8 @@ type ProductManagementDeleteState =
       businessTypeName: string;
       categoryName: string;
       itemName: string;
+      blocked: boolean;
+      blockedReason: string;
     };
 
 const cloneVersionFields = (fields: readonly BusinessFieldVersionFieldItem[]) =>
@@ -1799,6 +1814,7 @@ export default function BusinessFieldManagementContent() {
                   setProductCategories={setProductManagementCategories}
                   productNames={productManagementProductNames}
                   setProductNames={setProductManagementProductNames}
+                  associatedProductNameIds={associatedProductNameIds}
                   onCreateBusinessType={handleCreateBusinessType}
                   onUpdateBusinessType={handleUpdateBusinessType}
                   onDeleteBusinessType={handleDeleteBusinessType}
@@ -1900,6 +1916,7 @@ function ProductManagementPanel({
   setProductCategories,
   productNames,
   setProductNames,
+  associatedProductNameIds,
   onCreateBusinessType,
   onUpdateBusinessType,
   onDeleteBusinessType,
@@ -1910,6 +1927,7 @@ function ProductManagementPanel({
   setProductCategories: Dispatch<SetStateAction<ProductManagementCategoryItem[]>>;
   productNames: ProductManagementProductNameItem[];
   setProductNames: Dispatch<SetStateAction<ProductManagementProductNameItem[]>>;
+  associatedProductNameIds: Set<string>;
   onCreateBusinessType: (item: ProductManagementBusinessTypeItem) => void;
   onUpdateBusinessType: (
     previousBusinessTypeId: string,
@@ -2006,6 +2024,10 @@ function ProductManagementPanel({
       return;
     }
 
+    const parentCategoryEnabled = productCategories.find(
+      (item) => item.businessTypeName === currentBusinessTypeName && item.name === currentProductCategoryName
+    )?.enabled ?? true;
+
     setProductManagementModal({
       mode: 'create',
       type: 'product-name',
@@ -2020,7 +2042,7 @@ function ProductManagementPanel({
       processingSystem: '',
       systemProductCode: '',
       systemCategoryCode: '',
-      status: '启用',
+      status: parentCategoryEnabled ? '启用' : '停用',
       serviceEntries: [],
       serviceMode: '',
       shortName: '',
@@ -2077,35 +2099,45 @@ function ProductManagementPanel({
   };
 
   const handleOpenDeleteBusinessTypeDialog = (item: ProductManagementBusinessTypeItem) => {
+    const relatedCategoryCount = productCategories.filter((category) => category.businessTypeName === item.name).length;
+    const relatedProductCount = productNames.filter((product) => product.businessTypeName === item.name).length;
     setProductManagementDeleteState({
       type: 'business-type',
       businessTypeId: item.businessTypeId,
       itemName: item.name,
-      relatedCategoryCount: productCategories.filter((category) => category.businessTypeName === item.name).length,
-      relatedProductCount: productNames.filter((product) => product.businessTypeName === item.name).length,
+      relatedCategoryCount,
+      relatedProductCount,
+      blocked: relatedCategoryCount > 0,
+      blockedReason: '该业务类型下存在产品分类，需先删除所有子级产品分类',
     });
   };
 
   const handleOpenDeleteProductCategoryDialog = (item: ProductManagementCategoryItem) => {
+    const relatedProductCount = productNames.filter(
+      (product) =>
+        product.businessTypeName === item.businessTypeName && product.categoryName === item.name
+    ).length;
     setProductManagementDeleteState({
       type: 'product-category',
       categoryId: item.categoryId,
       businessTypeName: item.businessTypeName,
       itemName: item.name,
-      relatedProductCount: productNames.filter(
-        (product) =>
-          product.businessTypeName === item.businessTypeName && product.categoryName === item.name
-      ).length,
+      relatedProductCount,
+      blocked: relatedProductCount > 0,
+      blockedReason: '该产品分类下存在产品名称，需先删除所有子级产品名称',
     });
   };
 
   const handleOpenDeleteProductNameDialog = (item: ProductManagementProductNameItem) => {
+    const hasAssociation = associatedProductNameIds.has(item.productNameId);
     setProductManagementDeleteState({
       type: 'product-name',
       productNameId: item.productNameId,
       businessTypeName: item.businessTypeName,
       categoryName: item.categoryName,
       itemName: item.name,
+      blocked: hasAssociation,
+      blockedReason: '该产品名称下存在关联的问题分级配置/建单模板配置，需先删除关联配置',
     });
   };
 
@@ -2246,6 +2278,17 @@ function ProductManagementPanel({
           );
         }
 
+        if (productManagementModal.status === '停用') {
+          setProductNames((current) =>
+            current.map((item) =>
+              item.businessTypeName === nextBusinessTypeName &&
+              item.categoryName === nextName
+                ? { ...item, enabled: false }
+                : item
+            )
+          );
+        }
+
         if (
           selectedBusinessTypeName === previousBusinessTypeName &&
           selectedProductCategoryName === previousCategoryName
@@ -2335,7 +2378,7 @@ function ProductManagementPanel({
   };
 
   const handleConfirmDelete = () => {
-    if (!productManagementDeleteState) {
+    if (!productManagementDeleteState || productManagementDeleteState.blocked) {
       return;
     }
 
@@ -2351,16 +2394,8 @@ function ProductManagementPanel({
       const remainingBusinessTypes = businessTypes.filter(
         (item) => item.businessTypeId !== productManagementDeleteState.businessTypeId
       );
-      const remainingCategories = productCategories.filter(
-        (item) => item.businessTypeName !== currentItem.name
-      );
-      const remainingProductNames = productNames.filter(
-        (item) => item.businessTypeName !== currentItem.name
-      );
 
       onDeleteBusinessType(currentItem);
-      setProductCategories(remainingCategories);
-      setProductNames(remainingProductNames);
 
       if (selectedBusinessTypeName === currentItem.name) {
         const nextBusinessTypeName =
@@ -2368,10 +2403,10 @@ function ProductManagementPanel({
           remainingBusinessTypes[0]?.name ??
           '';
         const nextCategoryName =
-          remainingCategories.find(
+          productCategories.find(
             (item) => item.businessTypeName === nextBusinessTypeName && item.enabled
           )?.name ??
-          remainingCategories.find((item) => item.businessTypeName === nextBusinessTypeName)?.name ??
+          productCategories.find((item) => item.businessTypeName === nextBusinessTypeName)?.name ??
           '';
 
         setSelectedBusinessTypeName(nextBusinessTypeName);
@@ -2383,16 +2418,8 @@ function ProductManagementPanel({
       const remainingCategories = productCategories.filter(
         (item) => item.categoryId !== productManagementDeleteState.categoryId
       );
-      const remainingProductNames = productNames.filter(
-        (item) =>
-          !(
-            item.businessTypeName === productManagementDeleteState.businessTypeName &&
-            item.categoryName === productManagementDeleteState.itemName
-          )
-      );
 
       setProductCategories(remainingCategories);
-      setProductNames(remainingProductNames);
 
       if (
         selectedBusinessTypeName === productManagementDeleteState.businessTypeName &&
@@ -2441,6 +2468,15 @@ function ProductManagementPanel({
           productManagementModal.productNameId.trim(),
           productManagementModal.originalProductNameId ?? productManagementModal.productNameId
         )
+      : false;
+
+  const isParentCategoryDisabled =
+    productManagementModal?.type === 'product-name'
+      ? productCategories.find(
+          (item) =>
+            item.businessTypeName === productManagementModal.businessTypeName &&
+            item.name === productManagementModal.categoryName
+        )?.enabled === false
       : false;
 
   const isConfirmDisabled =
@@ -2963,17 +2999,23 @@ function ProductManagementPanel({
             </div>
             <div className="flex items-center gap-3">
               <ProductManagementFieldLabel label="状态" required />
-              <ProductManagementSelect
-                value={productManagementModal.status}
-                onChange={(value) =>
-                  setProductManagementModal((current) =>
-                    current?.type === 'product-name'
-                      ? { ...current, status: value as '启用' | '停用' }
-                      : current
-                  )
-                }
-                options={['启用', '停用']}
-              />
+              <div className="flex flex-1 items-center gap-2">
+                <ProductManagementSelect
+                  value={isParentCategoryDisabled ? '停用' : productManagementModal.status}
+                  onChange={(value) =>
+                    setProductManagementModal((current) =>
+                      current?.type === 'product-name'
+                        ? { ...current, status: value as '启用' | '停用' }
+                        : current
+                    )
+                  }
+                  options={['启用', '停用']}
+                  disabled={isParentCategoryDisabled}
+                />
+                {isParentCategoryDisabled ? (
+                  <span className="shrink-0 text-[12px] text-amber-600">(所属产品分类已停用)</span>
+                ) : null}
+              </div>
             </div>
             <div className="flex items-start gap-3">
               <ProductManagementFieldLabel label="服务入口" required={productManagementModal.mode === 'create'} />
@@ -2997,22 +3039,17 @@ function ProductManagementPanel({
           widthClassName="max-w-[320px]"
           onClose={() => setProductManagementDeleteState(null)}
           onConfirm={handleConfirmDelete}
-          confirmDisabled={false}
+          confirmDisabled={productManagementDeleteState.blocked}
         >
           <div className="space-y-3 text-[13px] leading-6 text-slate-600">
-            <p>确定删除“{productManagementDeleteState.itemName}”吗？</p>
-            {productManagementDeleteState.type === 'business-type' ? (
-              <p>
-                删除后会同时删除该业务类型下 {productManagementDeleteState.relatedCategoryCount} 个产品类型和{' '}
-                {productManagementDeleteState.relatedProductCount} 个产品名称。
-              </p>
-            ) : null}
-            {productManagementDeleteState.type === 'product-category' ? (
-              <p>
-                删除后会同时删除该产品类型下 {productManagementDeleteState.relatedProductCount} 个产品名称。
-              </p>
-            ) : null}
-            {productManagementDeleteState.type === 'product-name' ? <p>删除后当前产品名称数据不可恢复。</p> : null}
+            {productManagementDeleteState.blocked ? (
+              <>
+                <p>无法删除“{productManagementDeleteState.itemName}”</p>
+                <p className="text-amber-600">{productManagementDeleteState.blockedReason}</p>
+              </>
+            ) : (
+              <p>确定删除”{productManagementDeleteState.itemName}”吗？</p>
+            )}
           </div>
         </ProductManagementModalFrame>
       ) : null}

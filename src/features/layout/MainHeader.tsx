@@ -143,7 +143,7 @@ export default function MainHeader({
   const [dialNumber, setDialNumber] = useState('');
   const [isDialpadOpen, setIsDialpadOpen] = useState(false);
   const [isInCall, setIsInCall] = useState(false);
-  const [callTransferModal, setCallTransferModal] = useState<'转接' | '直接转' | '会议' | null>(null);
+  const [callTransferModal, setCallTransferModal] = useState<'转坐席' | '转技能组' | null>(null);
   const dialpadRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -388,34 +388,24 @@ export default function MainHeader({
                       <span className="text-[12px] font-semibold leading-none">保持</span>
                     </button>
 
-                    {/* 转接 */}
+                    {/* 转坐席 */}
                     <button
                       type="button"
-                      onClick={() => setCallTransferModal('转接')}
+                      onClick={() => setCallTransferModal('转坐席')}
                       className="focus-ring flex h-[52px] w-[52px] flex-col items-center justify-center gap-1 rounded-xl bg-emerald-50 text-emerald-600 transition-colors hover:bg-emerald-100"
                     >
                       <PhoneForwarded size={16} strokeWidth={2.2} />
-                      <span className="text-[12px] font-semibold leading-none">转接</span>
+                      <span className="text-[12px] font-semibold leading-none">转坐席</span>
                     </button>
 
-                    {/* 直接转 */}
+                    {/* 转技能组 */}
                     <button
                       type="button"
-                      onClick={() => setCallTransferModal('直接转')}
+                      onClick={() => setCallTransferModal('转技能组')}
                       className="focus-ring flex h-[52px] w-[52px] flex-col items-center justify-center gap-1 rounded-xl bg-blue-50 text-blue-600 transition-colors hover:bg-blue-100"
                     >
                       <PhoneForwarded size={16} strokeWidth={2.2} />
-                      <span className="text-[12px] font-semibold leading-none">直接转</span>
-                    </button>
-
-                    {/* 会议 */}
-                    <button
-                      type="button"
-                      onClick={() => setCallTransferModal('会议')}
-                      className="focus-ring flex h-[52px] w-[52px] flex-col items-center justify-center gap-1 rounded-xl bg-violet-50 text-violet-600 transition-colors hover:bg-violet-100"
-                    >
-                      <Users size={16} strokeWidth={2.2} />
-                      <span className="text-[12px] font-semibold leading-none">会议</span>
+                      <span className="text-[12px] font-semibold leading-none">转技能组</span>
                     </button>
 
                     {/* 静音 */}
@@ -822,11 +812,11 @@ function CallTransferModal({
   title,
   onClose,
 }: {
-  title: '转接' | '直接转' | '会议';
+  title: '转坐席' | '转技能组';
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<'agent' | 'skillGroup'>('agent');
   const [groupFilter, setGroupFilter] = useState<string>('');
+  const [agentSearch, setAgentSearch] = useState('');
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -835,8 +825,6 @@ function CallTransferModal({
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
-
-  const actionLabel = title === '会议' ? '邀请' : '转接';
 
   return (
     <div
@@ -852,34 +840,12 @@ function CallTransferModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-hairline px-6 py-4">
-          <div className="flex items-center gap-6">
-            <h2
-              id="transfer-modal-title"
-              className="text-[16px] font-bold tracking-tight text-slate-800"
-            >
-              {title}
-            </h2>
-            <div className="flex gap-4">
-              {([['agent', '坐席'], ['skillGroup', '技能组']] as const).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setTab(key)}
-                  className={cn(
-                    'relative pb-1 text-[14px] font-medium transition-colors',
-                    tab === key
-                      ? 'text-brand-600'
-                      : 'text-slate-500 hover:text-slate-700'
-                  )}
-                >
-                  {label}
-                  {tab === key ? (
-                    <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-brand-600" />
-                  ) : null}
-                </button>
-              ))}
-            </div>
-          </div>
+          <h2
+            id="transfer-modal-title"
+            className="text-[16px] font-bold tracking-tight text-slate-800"
+          >
+            {title}
+          </h2>
           <button
             type="button"
             className="focus-ring flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
@@ -891,19 +857,32 @@ function CallTransferModal({
 
         {/* Table */}
         <div className="min-h-[360px] px-6 py-2">
-          {tab === 'agent' ? (
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="border-b border-hairline text-left text-slate-500">
-                  <th className="w-[80px] py-3 font-medium">序号</th>
-                  <th className="py-3 font-medium">技能组</th>
-                  <th className="py-3 font-medium">工号</th>
-                  <th className="py-3 font-medium">状态</th>
-                  <th className="w-[100px] py-3 font-medium">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transferAgentRows.map((row) => (
+          {title === '转坐席' ? (
+            <div>
+              <div className="flex items-center gap-3 py-3">
+                <label className="text-[13px] text-slate-500">工号搜索</label>
+                <input
+                  type="text"
+                  value={agentSearch}
+                  onChange={(e) => setAgentSearch(e.target.value)}
+                  placeholder="输入工号"
+                  className="rounded-lg border border-hairline bg-white px-3 py-1.5 text-[13px] text-slate-700 outline-none transition-colors hover:border-brand-300 focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20"
+                />
+              </div>
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="border-b border-hairline text-left text-slate-500">
+                    <th className="w-[80px] py-3 font-medium">序号</th>
+                    <th className="py-3 font-medium">技能组</th>
+                    <th className="py-3 font-medium">工号</th>
+                    <th className="py-3 font-medium">状态</th>
+                    <th className="w-[100px] py-3 font-medium">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transferAgentRows
+                    .filter((row) => !agentSearch || row.agentNumber.includes(agentSearch))
+                    .map((row) => (
                   <tr key={row.id} className="border-b border-hairline/60">
                     <td className="py-3 text-slate-600">{row.id}</td>
                     <td className="py-3 text-slate-700">{row.skillGroup}</td>
@@ -917,13 +896,14 @@ function CallTransferModal({
                         onClick={onClose}
                         className="text-[13px] font-medium text-brand-600 transition-colors hover:text-brand-700"
                       >
-                        {actionLabel}
+                        转接
                       </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
           ) : (
             <div>
               <div className="flex items-center gap-3 py-3">
@@ -962,7 +942,7 @@ function CallTransferModal({
                             onClick={onClose}
                             className="text-[13px] font-medium text-brand-600 transition-colors hover:text-brand-700"
                           >
-                            {actionLabel}
+                            转接
                           </button>
                         </td>
                       </tr>

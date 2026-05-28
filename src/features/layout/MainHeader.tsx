@@ -801,9 +801,9 @@ const transferAgentRows = [
 ];
 
 const transferSkillGroupRows = [
-  { id: 1, group: '售后部', name: '售后服务组' },
-  { id: 2, group: '售后部', name: '技术支持组' },
-  { id: 3, group: '客服部', name: 'VIP客户组' },
+  { id: 1, group: '售后部', name: '售后服务组', loggedIn: 12, ready: 8, queued: 3 },
+  { id: 2, group: '售后部', name: '技术支持组', loggedIn: 6, ready: 4, queued: 1 },
+  { id: 3, group: '客服部', name: 'VIP客户组', loggedIn: 9, ready: 5, queued: 0 },
 ];
 
 const skillGroupGroups = [...new Set(transferSkillGroupRows.map((r) => r.group))];
@@ -817,6 +817,7 @@ function CallTransferModal({
 }) {
   const [groupFilter, setGroupFilter] = useState<string>('');
   const [agentSearch, setAgentSearch] = useState('');
+  const [confirmRow, setConfirmRow] = useState<(typeof transferSkillGroupRows)[number] | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -939,7 +940,7 @@ function CallTransferModal({
                         <td className="py-3">
                           <button
                             type="button"
-                            onClick={onClose}
+                            onClick={() => setConfirmRow(row)}
                             className="text-[13px] font-medium text-brand-600 transition-colors hover:text-brand-700"
                           >
                             转接
@@ -964,6 +965,54 @@ function CallTransferModal({
           </button>
         </div>
       </div>
+
+      {/* 转技能组确认弹窗 */}
+      {confirmRow ? (
+        <div
+          className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-900/50 backdrop-blur-[2px]"
+          onClick={() => setConfirmRow(null)}
+        >
+          <div
+            className="animate-fade-in-up w-full max-w-[400px] rounded-2xl bg-white p-6 shadow-[0_30px_80px_rgba(15,23,42,0.25)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-4 text-[15px] font-bold text-slate-800">
+              转接确认 · {confirmRow.name}
+            </h3>
+            <div className="space-y-2 rounded-xl bg-slate-50 px-4 py-3 text-[13px] text-slate-600">
+              <div className="flex items-center justify-between">
+                <span>当前登录人数</span>
+                <span className="font-semibold tabular-nums text-slate-800">{confirmRow.loggedIn}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>当前就绪人数</span>
+                <span className="font-semibold tabular-nums text-emerald-600">{confirmRow.ready}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>当前排队人数</span>
+                <span className="font-semibold tabular-nums text-amber-600">{confirmRow.queued}</span>
+              </div>
+            </div>
+            <p className="mt-3 text-center text-[13px] text-slate-500">是否确认转接？</p>
+            <div className="mt-4 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmRow(null)}
+                className="focus-ring rounded-xl border border-hairline bg-white px-5 py-2 text-[13px] font-semibold text-slate-600 transition-colors hover:border-brand-200 hover:text-brand-600"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => { setConfirmRow(null); onClose(); }}
+                className="focus-ring rounded-xl bg-gradient-to-r from-brand-500 to-brand-400 px-5 py-2 text-[13px] font-semibold text-white shadow-[0_6px_14px_-4px_rgba(58,92,255,0.5)] transition-all hover:brightness-105"
+              >
+                确认转接
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -30,8 +30,11 @@ export const DEFAULT_USER_ROLE: UserRole = 'agent';
 export const isUserRole = (value: string): value is UserRole =>
   (userRoleOrder as readonly string[]).includes(value);
 
+const BASE = import.meta.env.BASE_URL.replace(/\/+$/, '');
+
 export const parseRoleFromPathname = (pathname: string): UserRole | null => {
-  const segment = pathname.replace(/^\/+/, '').split('/')[0] ?? '';
+  const stripped = BASE ? pathname.replace(new RegExp(`^${BASE}`), '') : pathname;
+  const segment = stripped.replace(/^\/+/, '').split('/')[0] ?? '';
   if (!segment) return null;
   try {
     const decoded = decodeURIComponent(segment);
@@ -41,7 +44,7 @@ export const parseRoleFromPathname = (pathname: string): UserRole | null => {
   }
 };
 
-export const buildPathForRole = (role: UserRole): string => `/${role}`;
+export const buildPathForRole = (role: UserRole): string => `${BASE}/${role}`;
 
 export const getViewModeForRole = (role: UserRole): 'manager' | 'agent' =>
   role === 'agent' ? 'agent' : 'manager';

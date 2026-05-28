@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, Image as ImageIcon, Smile, X } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Image as ImageIcon, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 import { cn } from '../../lib/cn';
@@ -301,9 +301,6 @@ export default function ProjectDirectorExpressManagerModal({
 
                 <div className="border-t border-slate-100 bg-white">
                   <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-2.5">
-                    <button type="button" className={portalToolbarIconButtonClassName}>
-                      <Smile size={15} />
-                    </button>
                     <button type="button" className={portalToolbarIconButtonClassName}>
                       <ImageIcon size={15} />
                     </button>

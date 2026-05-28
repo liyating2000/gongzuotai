@@ -1,26 +1,24 @@
-import { useMemo, useState } from 'react';
+import React, { useMemo, useEffect, useRef, useState } from 'react';
 import {
   Activity,
   ChevronDown,
-  GraduationCap,
   TrendingDown,
   TrendingUp,
   User,
-  Users,
 } from 'lucide-react';
 
 import { cn } from '../../lib/cn';
 
 type MetricKey = '解决率' | '客户满意度' | '质检平均分' | '接通量';
 
-type RangeKey = '近7天' | '近14天' | '近30天';
+type RangeKey = '近三天' | '本月' | '上月';
 
 const metricOptions: MetricKey[] = ['解决率', '客户满意度', '质检平均分', '接通量'];
-const rangeOptions: RangeKey[] = ['近7天', '近14天', '近30天'];
+const rangeOptions: RangeKey[] = ['近三天', '本月', '上月'];
 const rangeDays: Record<RangeKey, number> = {
-  '近7天': 7,
-  '近14天': 14,
-  '近30天': 30,
+  '近三天': 3,
+  '本月': 30,
+  '上月': 30,
 };
 
 /** 指标显示配置 */
@@ -68,7 +66,7 @@ const metricDisplay: Record<
   },
 };
 
-const focusAgents = [
+const focusAgentsList = [
   { name: '王五', color: '#f97316', dim: '#fed7aa' },
   { name: '李四', color: '#8b5cf6', dim: '#ddd6fe' },
   { name: '赵六', color: '#06b6d4', dim: '#a5f3fc' },
@@ -95,32 +93,22 @@ const PADDING = { top: 16, right: 24, bottom: 28, left: 44 };
 const INNER_W = CHART_WIDTH - PADDING.left - PADDING.right;
 const INNER_H = CHART_HEIGHT - PADDING.top - PADDING.bottom;
 
-const FOCUS_ALL = '全部' as const;
-
-const directorGroupOptions = [
-  '售后一组',
-  '售后二组',
-  '售前一组',
-  '售前二组',
-  '投诉专组',
-  'VIP 组',
-];
-
-type MetricFluctuationPanelProps = {
-  /** 总监角色开启"分组"必选筛选 */
-  isDirector?: boolean;
-};
-
-export default function MetricFluctuationPanel({
-  isDirector = false,
-}: MetricFluctuationPanelProps) {
+export default function MetricFluctuationPanel() {
   const [metric, setMetric] = useState<MetricKey>('解决率');
-  const [range, setRange] = useState<RangeKey>('近14天');
-  const [focusAgent, setFocusAgent] = useState<string>(FOCUS_ALL);
-  const [group, setGroup] = useState<string>(directorGroupOptions[0]);
+  const [range, setRange] = useState<RangeKey>('近三天');
+  const [focusAgents, setFocusAgents] = useState<Set<string>>(new Set());
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [hiddenAgents, setHiddenAgents] = useState<Set<string>>(new Set());
-  const isSingleFocus = focusAgent !== FOCUS_ALL;
+  const isFocused = focusAgents.size > 0;
+
+  const toggleFocus = (name: string) => {
+    setFocusAgents((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
 
   const toggleAgent = (name: string) => {
     setHiddenAgents((prev) => {
@@ -143,8 +131,8 @@ export default function MetricFluctuationPanel({
       d.setDate(d.getDate() - i);
       labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
     }
-    const seedBase = seedFrom(`${metric}-${range}-${isDirector ? group : 'team'}`);
-    // 团队均值序列（平缓波动）
+    const seedBase = seedFrom(`${metric}-${range}-team`);
+    // 团队达成值序列（平缓波动）
     const team = labels.map((_, i) => {
       const r = rand(seedBase + i * 31);
       return base + (r - 0.5) * amp * 0.5;
@@ -154,7 +142,7 @@ export default function MetricFluctuationPanel({
     const upper = team.map((t) => t + amp * 0.45);
 
     // 个人序列
-    const agents = focusAgents.map((a, idx) => {
+    const agents = focusAgentsList.map((a, idx) => {
       const seed = seedBase + idx * 197 + seedFrom(a.name);
       const bias = (rand(seed) - 0.5) * amp * 0.4;
       const values = labels.map((_, i) => {
@@ -174,7 +162,7 @@ export default function MetricFluctuationPanel({
     const yMax = maxV + pad;
 
     return { labels, team, lower, upper, agents, yMin, yMax, cfg };
-  }, [metric, range, group, isDirector]);
+  }, [metric, range]);
 
   const { labels, team, lower, upper, agents, yMin, yMax, cfg } = data;
   const xStep = labels.length > 1 ? INNER_W / (labels.length - 1) : 0;
@@ -211,7 +199,7 @@ export default function MetricFluctuationPanel({
   // Y 轴刻度（4 段）
   const yTicks = Array.from({ length: 5 }, (_, i) => yMin + ((yMax - yMin) * i) / 4);
 
-  // 团队均值统计
+  // 团队达成值统计
   const teamAvg = team.reduce((a, b) => a + b, 0) / team.length;
   // 每个人均值与团队差异
   const agentStats = agents.map((a) => {
@@ -219,7 +207,7 @@ export default function MetricFluctuationPanel({
     return { name: a.name, color: a.color, avg, diff: avg - teamAvg };
   });
 
-  // 目标达成率（超过 target 的天数 / 总天数，基于团队均值）
+  // 目标达成率（超过 target 的天数 / 总天数，基于团队达成值）
   const onTargetDays = team.filter((v) =>
     metric === '客户满意度' || metric === '质检平均分' || metric === '解决率'
       ? v >= cfg.target
@@ -235,29 +223,14 @@ export default function MetricFluctuationPanel({
           </span>
           <div className="min-w-0">
             <h3 className="flex items-center gap-2 truncate text-[15px] font-bold tracking-tight text-slate-800">
-              指标波动 · 个人 vs 团队均值
-              {isDirector ? (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700 ring-1 ring-inset ring-violet-100">
-                  {group}
-                </span>
-              ) : null}
+              指标波动 · 个人 vs 团队达成值
             </h3>
             <p className="truncate text-[12px] text-slate-500">
-              实线为重点员工，橙色虚线为团队均值，灰带为团队波动区间
+              实线为重点员工，橙色虚线为团队达成值，灰带为团队波动区间
             </p>
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {isDirector ? (
-            <FilterSelect
-              value={group}
-              options={directorGroupOptions}
-              onChange={setGroup}
-              icon={<Users size={12} />}
-              label="分组"
-              required
-            />
-          ) : null}
           <FilterSelect
             value={metric}
             options={metricOptions}
@@ -268,41 +241,49 @@ export default function MetricFluctuationPanel({
             options={rangeOptions}
             onChange={(v) => setRange(v as RangeKey)}
           />
-          <FilterSelect
-            value={focusAgent}
-            options={[FOCUS_ALL, ...focusAgents.map((a) => a.name)]}
-            onChange={setFocusAgent}
+          <MultiFilterSelect
+            value={focusAgents.size === 0 ? '全部' : `已选${focusAgents.size}人`}
+            options={focusAgentsList.map((a) => a.name)}
+            selected={focusAgents}
+            onToggle={toggleFocus}
             icon={<User size={12} />}
             label="聚焦"
           />
         </div>
       </header>
 
-      {/* 指标摘要 / 单人对比 */}
-      {isSingleFocus ? (
-        <FocusSummary
-          agentName={focusAgent}
-          teamAvg={teamAvg}
-          target={cfg.target}
-          values={agents.find((a) => a.name === focusAgent)?.values ?? []}
-          format={cfg.format}
-          color={agents.find((a) => a.name === focusAgent)?.color ?? '#0ea5e9'}
-        />
+      {/* 指标摘要 / 聚焦对比 */}
+      {isFocused ? (
+        <>
+          {agents
+            .filter((a) => focusAgents.has(a.name))
+            .map((a) => (
+              <FocusSummary
+                key={a.name}
+                agentName={a.name}
+                teamAvg={teamAvg}
+                target={cfg.target}
+                values={a.values}
+                format={cfg.format}
+                color={a.color}
+              />
+            ))}
+        </>
       ) : (
-        <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <SummaryCard label="团队均值" value={cfg.format(teamAvg)} tone="sky" />
-          <SummaryCard label="目标线" value={cfg.format(cfg.target)} tone="emerald" />
-          <SummaryCard
-            label="达标天数"
-            value={`${onTargetDays} / ${team.length}`}
-            tone="violet"
-          />
-          <SummaryCard
-            label="波动幅度"
-            value={`± ${cfg.format(Math.max(...upper.map((u, i) => u - lower[i])) / 2)}`}
-            tone="amber"
-          />
-        </div>
+      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <SummaryCard label="团队达成值" value={cfg.format(teamAvg)} tone="sky" />
+        <SummaryCard label="目标线" value={cfg.format(cfg.target)} tone="emerald" />
+        <SummaryCard
+          label="达标天数"
+          value={`${onTargetDays} / ${team.length}`}
+          tone="violet"
+        />
+        <SummaryCard
+          label="波动幅度"
+          value={`± ${cfg.format(Math.max(...upper.map((u, i) => u - lower[i])) / 2)}`}
+          tone="amber"
+        />
+      </div>
       )}
 
       {/* 图表 */}
@@ -370,7 +351,7 @@ export default function MetricFluctuationPanel({
           {/* 团队波动带 */}
           <path d={bandPath} fill="url(#fluct-band)" stroke="none" />
 
-          {/* 团队均值线 */}
+          {/* 团队达成值线 */}
           <path
             d={buildPath(team)}
             fill="none"
@@ -382,15 +363,15 @@ export default function MetricFluctuationPanel({
           />
 
           {/* 个人线 */}
-          {agents
-            .filter((a) => (isSingleFocus ? a.name === focusAgent : !hiddenAgents.has(a.name)))
+          {isFocused ? agents
+            .filter((a) => focusAgents.has(a.name) && !hiddenAgents.has(a.name))
             .map((a) => (
               <g key={a.name}>
                 <path
                   d={buildPath(a.values)}
                   fill="none"
                   stroke={a.color}
-                  strokeWidth={isSingleFocus ? 2.8 : 1.8}
+                  strokeWidth={isFocused ? 2.8 : 1.8}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   opacity="0.95"
@@ -400,14 +381,14 @@ export default function MetricFluctuationPanel({
                     key={i}
                     cx={xPos(i)}
                     cy={yScale(v)}
-                    r={hoverIdx === i ? 4 : isSingleFocus ? 2.8 : 2}
+                    r={hoverIdx === i ? 4 : isFocused ? 2.8 : 2}
                     fill="#fff"
                     stroke={a.color}
-                    strokeWidth={isSingleFocus ? 2 : 1.6}
+                    strokeWidth={isFocused ? 2 : 1.6}
                   />
                 ))}
               </g>
-            ))}
+            )) : null}
 
           {/* X 轴标签 */}
           {labels.map((l, i) => {
@@ -466,14 +447,14 @@ export default function MetricFluctuationPanel({
             <div className="flex items-center justify-between gap-3">
               <span className="flex items-center gap-1 text-orange-500">
                 <span className="inline-block h-2 w-2 rounded-full bg-orange-500" />
-                团队均值
+                团队达成值
               </span>
               <span className="font-semibold text-slate-800 tabular-nums">
                 {cfg.format(team[hoverIdx])}
               </span>
             </div>
-            {agents
-              .filter((a) => (isSingleFocus ? a.name === focusAgent : !hiddenAgents.has(a.name)))
+            {isFocused ? agents
+              .filter((a) => focusAgents.has(a.name) && !hiddenAgents.has(a.name))
               .map((a) => (
                 <div key={a.name} className="flex items-center justify-between gap-3">
                   <span className="flex items-center gap-1" style={{ color: a.color }}>
@@ -487,7 +468,7 @@ export default function MetricFluctuationPanel({
                     {cfg.format(a.values[hoverIdx])}
                   </span>
                 </div>
-              ))}
+              )) : null}
           </div>
         ) : null}
       </div>
@@ -495,9 +476,9 @@ export default function MetricFluctuationPanel({
       {/* 图例 + 员工对比 */}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <LegendChip color="#f97316" label="团队均值" dashed active onClick={() => {}} />
-          {agentStats
-            .filter((a) => (isSingleFocus ? a.name === focusAgent : true))
+          <LegendChip color="#f97316" label="团队达成值" dashed active onClick={() => {}} />
+          {isFocused ? agentStats
+            .filter((a) => focusAgents.has(a.name))
             .map((a) => {
               const isHidden = hiddenAgents.has(a.name);
               const positive = a.diff >= 0;
@@ -505,26 +486,24 @@ export default function MetricFluctuationPanel({
                 <button
                   key={a.name}
                   type="button"
-                  onClick={() => !isSingleFocus && toggleAgent(a.name)}
+                  onClick={() => toggleAgent(a.name)}
                   className={cn(
                     'focus-ring inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all',
-                    isSingleFocus
-                      ? 'border-hairline bg-slate-50 text-slate-700'
-                      : isHidden
-                        ? 'border-hairline bg-white text-slate-400'
-                        : 'border-hairline bg-white text-slate-600 hover:border-brand-200'
+                    isHidden
+                      ? 'border-hairline bg-white text-slate-400'
+                      : 'border-hairline bg-white text-slate-600 hover:border-brand-200'
                   )}
-                  title={isSingleFocus ? '当前聚焦' : isHidden ? '点击显示' : '点击隐藏'}
+                  title={isHidden ? '点击显示' : '点击隐藏'}
                 >
                   <span
                     className="inline-block h-2 w-2 rounded-full"
-                    style={{ background: !isSingleFocus && isHidden ? '#cbd5e1' : a.color }}
+                    style={{ background: isHidden ? '#cbd5e1' : a.color }}
                   />
                   {a.name}
                   <span
                     className={cn(
                       'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums',
-                      !isSingleFocus && isHidden
+                      isHidden
                         ? 'bg-slate-100 text-slate-400'
                         : positive
                           ? 'bg-emerald-50 text-emerald-600'
@@ -537,12 +516,12 @@ export default function MetricFluctuationPanel({
                   </span>
                 </button>
               );
-            })}
+            }) : null}
         </div>
-        {isSingleFocus ? (
+        {isFocused ? (
           <button
             type="button"
-            onClick={() => setFocusAgent(FOCUS_ALL)}
+            onClick={() => setFocusAgents(new Set())}
             className="focus-ring inline-flex items-center gap-1 rounded-full border border-hairline bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500 transition-colors hover:border-brand-200 hover:text-brand-600"
           >
             返回全部对比
@@ -608,6 +587,87 @@ function FilterSelect({
   );
 }
 
+function MultiFilterSelect({
+  value,
+  options,
+  selected,
+  onToggle,
+  icon,
+  label,
+  max = 5,
+}: {
+  value: string;
+  options: string[];
+  selected: Set<string>;
+  onToggle: (name: string) => void;
+  icon?: React.ReactNode;
+  label?: string;
+  max?: number;
+}) {
+  const atLimit = selected.size >= max;
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div className="relative inline-flex items-center" ref={ref}>
+      {icon ? (
+        <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+          {icon}
+        </span>
+      ) : null}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          'focus-ring flex h-8 items-center gap-1 rounded-full border border-hairline bg-white pr-7 text-[12px] font-medium text-slate-700 outline-none transition-colors hover:border-brand-200',
+          icon ? 'pl-7' : 'pl-3'
+        )}
+      >
+        {label ? `${label}：${value}` : value}
+      </button>
+      <ChevronDown
+        size={12}
+        className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"
+      />
+      {open ? (
+        <div className="absolute right-0 top-full z-20 mt-1 min-w-[140px] rounded-xl border border-hairline bg-white py-1 shadow-[0_10px_24px_rgba(15,23,42,0.12)]">
+          {options.map((name) => {
+            const checked = selected.has(name);
+            const disabled = !checked && atLimit;
+            return (
+              <label
+                key={name}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-1.5 text-[12px]',
+                  disabled ? 'cursor-not-allowed text-slate-400' : 'cursor-pointer text-slate-700 hover:bg-slate-50'
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={disabled}
+                  onChange={() => onToggle(name)}
+                  className="h-3.5 w-3.5 rounded border-slate-300 text-brand-500 focus:ring-brand-300 disabled:opacity-40"
+                />
+                {name}
+              </label>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function FocusSummary({
   agentName,
   teamAvg,
@@ -628,8 +688,6 @@ function FocusSummary({
   const diff = avg - teamAvg;
   const positive = diff >= 0;
   const onTargetDays = values.filter((v) => v >= target).length;
-  const minV = Math.min(...values);
-  const maxV = Math.max(...values);
   const belowTeamDays = values.filter((v) => v < teamAvg).length;
 
   return (
@@ -653,24 +711,15 @@ function FocusSummary({
         </div>
       </div>
       <FocusStat label="个人均值" value={format(avg)} highlight={color} />
-      <FocusStat label="团队均值" value={format(teamAvg)} />
+      <FocusStat label="团队达成值" value={format(teamAvg)} />
       <FocusStat
-        label="与团队差"
+        label="与团队达成值差"
         value={`${positive ? '+' : ''}${format(diff)}`}
         tone={positive ? 'emerald' : 'rose'}
         trendUp={positive}
       />
       <FocusStat label="达标天数" value={`${onTargetDays} / ${values.length}`} tone="violet" />
-      <FocusStat label="低于团队天数" value={`${belowTeamDays} 天`} tone="amber" />
-      <FocusStat label="区间" value={`${format(minV)} ~ ${format(maxV)}`} />
-      <button
-        type="button"
-        className="focus-ring press-lift ml-auto inline-flex items-center gap-1 self-center rounded-full bg-gradient-to-r from-amber-500 to-amber-400 px-3 py-1.5 text-[12px] font-semibold text-white shadow-[0_6px_14px_-6px_rgba(245,158,11,0.6)]"
-        title={`针对 ${agentName} 发起辅导`}
-      >
-        <GraduationCap size={12} />
-        发起辅导
-      </button>
+      <FocusStat label="低于团队达成值天数" value={`${belowTeamDays} 天`} tone="amber" />
     </div>
   );
 }

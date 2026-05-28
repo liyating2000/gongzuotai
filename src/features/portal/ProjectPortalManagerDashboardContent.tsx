@@ -241,37 +241,51 @@ type DistributionPoint = {
 };
 
 /**
- * 三个周期的 X 轴统一为 0–23 时（一天 24 小时），
- * 代表所选周期内每个时段的**平均**业务量与人力。
- *
- * - 日：当日各小时的实际值
- * - 周：本周 7 天各小时的日均值
- * - 月：本月 ~30 天各小时的日均值
+ * 日维度 X 轴为 8:00–23:00 半小时粒度，周/月维度仍为整点粒度。
  */
+const halfHourLabels: string[] = [];
+for (let h = 8; h <= 23; h++) {
+  halfHourLabels.push(`${h}:00`);
+  if (h < 23) halfHourLabels.push(`${h}:30`);
+}
 const hourLabels = Array.from({ length: 24 }, (_, i) => String(i));
 
 const chartDataByPeriod: Record<'日' | '周' | '月', DistributionPoint[]> = {
-  // 日 — 当日各小时实际值
-  日: hourLabels.map((h) => {
-    const hour = Number(h);
-    const base = [800, 1200, 950, 1500, 2000, 1800, 2500, 3200, 5800, 7200, 6500, 6000, 4500, 8000, 9200, 8800, 7500, 6200, 4800, 3500, 2800, 2000, 1500, 900];
-    const mp   = [3, 4, 3, 5, 6, 6, 8, 10, 15, 18, 17, 16, 13, 20, 19, 18, 17, 15, 12, 10, 8, 6, 5, 3];
-    return { label: h, business: base[hour], manpower: mp[hour] };
+  // 日 — 8:00~23:00 半小时粒度
+  日: halfHourLabels.map((label) => {
+    const [hStr, mStr] = label.split(':');
+    const hour = Number(hStr);
+    const isHalf = mStr === '30';
+    const baseFull = [0, 0, 0, 0, 0, 0, 0, 0, 5800, 7200, 6500, 6000, 4500, 8000, 9200, 8800, 7500, 6200, 4800, 3500, 2800, 2000, 1500, 900];
+    const mpFull   = [0, 0, 0, 0, 0, 0, 0, 0, 15, 18, 17, 16, 13, 20, 19, 18, 17, 15, 12, 10, 8, 6, 5, 3];
+    const b0 = baseFull[hour];
+    const m0 = mpFull[hour];
+    if (!isHalf) return { label, business: b0, manpower: m0 };
+    const b1 = hour + 1 < 24 ? baseFull[hour + 1] : b0;
+    const m1 = hour + 1 < 24 ? mpFull[hour + 1] : m0;
+    return { label, business: Math.round((b0 + b1) / 2), manpower: Math.round(((m0 + m1) / 2) * 10) / 10 };
   }),
-  // 周 — 本周 7 天各小时的日均业务量（比日稍平滑，峰值略低）
-  周: hourLabels.map((h) => {
-    const hour = Number(h);
-    const base = [750, 1100, 900, 1400, 1850, 1700, 2350, 3000, 5500, 6800, 6200, 5700, 4300, 7600, 8800, 8400, 7200, 5900, 4600, 3300, 2600, 1900, 1400, 850];
-    const mp   = [3, 4, 3, 5, 6, 5, 7, 9, 14, 17, 16, 15, 12, 19, 18, 17, 16, 14, 11, 9, 7, 6, 5, 3];
-    return { label: h, business: base[hour], manpower: mp[hour] };
-  }),
-  // 月 — 本月 ~30 天各小时的日均业务量（更平滑，均值化）
-  月: hourLabels.map((h) => {
-    const hour = Number(h);
-    const base = [700, 1050, 880, 1350, 1800, 1650, 2200, 2900, 5200, 6500, 5900, 5500, 4100, 7200, 8400, 8000, 6900, 5600, 4400, 3100, 2500, 1850, 1350, 800];
-    const mp   = [3, 4, 3, 4, 5, 5, 7, 9, 14, 16, 15, 14, 12, 18, 17, 16, 15, 13, 11, 9, 7, 5, 4, 3];
-    return { label: h, business: base[hour], manpower: mp[hour] };
-  }),
+  // 周 — 周一到周五
+  周: (() => {
+    const weekLabels = ['周一', '周二', '周三', '周四', '周五'];
+    const base = [6200, 7100, 6800, 7400, 5900];
+    const mp   = [16, 18, 17, 19, 15];
+    return weekLabels.map((label, i) => ({ label, business: base[i], manpower: mp[i] }));
+  })(),
+  // 月 — 本月1号到当天
+  月: (() => {
+    const today = new Date();
+    const day = today.getDate();
+    const seed = 42;
+    return Array.from({ length: day }, (_, i) => {
+      const d = i + 1;
+      const r1 = ((seed + d * 7) * 9301 + 49297) % 233280;
+      const r2 = ((seed + d * 13) * 9301 + 49297) % 233280;
+      const business = 4000 + Math.round((r1 / 233280) * 5000);
+      const manpower = 10 + Math.round((r2 / 233280) * 10);
+      return { label: `${d}日`, business, manpower };
+    });
+  })(),
 };
 
 const dailyNotices = [
@@ -1166,7 +1180,7 @@ function RightPanel({
         <div className="mb-1 flex items-center px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
           <span className="w-8 flex-shrink-0">排名</span>
           <span className="flex-1">姓名</span>
-          <span className="text-right">个人 / 组平均</span>
+          <span className="text-right">个人 / 部门平均</span>
         </div>
 
         <div className="space-y-0.5">
@@ -1425,7 +1439,7 @@ export default function ProjectPortalManagerDashboardContent({
               onOpenCriticalErrorModal={onOpenCriticalErrorModal}
               onOpenBreakdown={setBreakdownLabel}
             />
-            <MetricFluctuationPanel isDirector={isDirector} />
+            <MetricFluctuationPanel />
             <ChartPanel />
           </div>
 

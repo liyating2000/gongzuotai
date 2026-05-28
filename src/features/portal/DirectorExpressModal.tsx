@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import {
   ArrowLeft,
   Check,
@@ -36,14 +37,18 @@ type DirectorExpressModalProps = {
   messages: DirectorExpressMessage[];
   selectedMessage: DirectorExpressMessage | null;
   newMessageContent: string;
+  newMessageTitle: string;
   isAnonymous: boolean;
   replyText: string;
+  replyImage: string | null;
   onClose: () => void;
   onViewChange: (view: DirectorExpressView) => void;
   onMessageSelect: (message: DirectorExpressMessage) => void;
   onNewMessageContentChange: (value: string) => void;
+  onNewMessageTitleChange: (value: string) => void;
   onAnonymousChange: (value: boolean) => void;
   onReplyTextChange: (value: string) => void;
+  onReplyImageChange: (value: string | null) => void;
   onSendMessage: () => void;
   onSendReply: () => void;
 };
@@ -55,14 +60,18 @@ export default function DirectorExpressModal({
   messages,
   selectedMessage,
   newMessageContent,
+  newMessageTitle,
   isAnonymous,
   replyText,
+  replyImage,
   onClose,
   onViewChange,
   onMessageSelect,
   onNewMessageContentChange,
+  onNewMessageTitleChange,
   onAnonymousChange,
   onReplyTextChange,
+  onReplyImageChange,
   onSendMessage,
   onSendReply,
 }: DirectorExpressModalProps) {
@@ -83,6 +92,19 @@ export default function DirectorExpressModal({
       />
     );
   }
+
+  const replyImageInputRef = useRef<HTMLInputElement>(null);
+
+  const handleReplyImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      onReplyImageChange(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
 
   const currentView = isManagerPortalView && view === 'new' ? 'list' : view;
   const senderColumnTitle = isManagerPortalView ? '发件人' : '是否匿名';
@@ -293,6 +315,17 @@ export default function DirectorExpressModal({
                     </div>
                   </div>
 
+                  <div className="flex items-center">
+                    <span className="w-20 text-sm text-slate-500">信件标题</span>
+                    <input
+                      type="text"
+                      className="flex-1 rounded border border-slate-200 px-3 py-1.5 text-sm text-slate-800 transition-colors focus:border-[#00BFA5] focus:outline-none"
+                      placeholder="请输入信件标题"
+                      value={newMessageTitle}
+                      onChange={(event) => onNewMessageTitleChange(event.target.value)}
+                    />
+                  </div>
+
                   <div className="pt-2">
                     <span className="text-sm text-slate-800">信件内容</span>
                   </div>
@@ -484,7 +517,10 @@ export default function DirectorExpressModal({
                               : 'bg-slate-50'
                           )}
                         >
-                          <p>{reply.content}</p>
+                          {reply.content ? <p>{reply.content}</p> : null}
+                          {reply.image ? (
+                            <img src={reply.image} alt="回复图片" className="mt-2 max-h-40 rounded-lg" />
+                          ) : null}
                           <div
                             className={cn(
                               'absolute top-4 h-4 w-4 rotate-45',
@@ -499,26 +535,55 @@ export default function DirectorExpressModal({
                   </div>
 
                   <div className="absolute bottom-6 left-6 right-6">
-                    <div className="relative">
+                    {replyImage ? (
+                      <div className="mb-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2">
+                        <img src={replyImage} alt="待发送图片" className="h-16 rounded" />
+                        <button
+                          type="button"
+                          onClick={() => onReplyImageChange(null)}
+                          className="ml-auto text-slate-400 hover:text-slate-600"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : null}
+                    <div className="relative flex items-center gap-2">
                       <input
-                        type="text"
-                        placeholder="说点什么"
-                        value={replyText}
-                        onChange={(event) => onReplyTextChange(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            onSendReply();
-                          }
-                        }}
-                        className="w-full rounded-full border border-slate-100 bg-slate-50 py-3 px-6 pr-12 text-sm transition-colors focus:border-emerald-500 focus:outline-none"
+                        ref={replyImageInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleReplyImageSelect}
                       />
                       <button
                         type="button"
-                        onClick={onSendReply}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-500 hover:text-emerald-600"
+                        onClick={() => replyImageInputRef.current?.click()}
+                        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-slate-100 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100 hover:text-emerald-500"
+                        title="发送图片"
                       >
-                        <Send size={18} />
+                        <ImageIcon size={18} />
                       </button>
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          placeholder="说点什么"
+                          value={replyText}
+                          onChange={(event) => onReplyTextChange(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              onSendReply();
+                            }
+                          }}
+                          className="w-full rounded-full border border-slate-100 bg-slate-50 py-3 px-6 pr-12 text-sm transition-colors focus:border-emerald-500 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={onSendReply}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-500 hover:text-emerald-600"
+                        >
+                          <Send size={18} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

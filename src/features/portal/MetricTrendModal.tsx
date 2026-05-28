@@ -19,24 +19,24 @@ type MetricTrendModalProps = {
   onClose: () => void;
 };
 
-const trendTabs = ['近3天', '近7天', '近一个月'] as const;
+const trendTabs = ['近三天', '本月', '上月'] as const;
 type TrendTab = (typeof trendTabs)[number];
 
 const trendLabelsByTab: Record<TrendTab, string[]> = {
-  '近3天': ['10.12', '10.13', '10.14'],
-  '近7天': ['10.8', '10.9', '10.10', '10.11', '10.12', '10.13', '10.14'],
-  '近一个月': [
-    '9.15',
-    '9.18',
-    '9.21',
-    '9.24',
-    '9.27',
+  '近三天': ['10.12', '10.13', '10.14'],
+  '本月': ['10.1', '10.3', '10.5', '10.7', '10.9', '10.11', '10.13', '10.14'],
+  '上月': [
+    '9.1',
+    '9.4',
+    '9.7',
+    '9.10',
+    '9.13',
+    '9.16',
+    '9.19',
+    '9.22',
+    '9.25',
+    '9.28',
     '9.30',
-    '10.3',
-    '10.6',
-    '10.9',
-    '10.12',
-    '10.14',
   ],
 };
 
@@ -65,13 +65,13 @@ const createTrendSeries = (metricLabel: string, tab: TrendTab): TrendPoint[] => 
 };
 
 export default function MetricTrendModal({ title, onClose }: MetricTrendModalProps) {
-  const [activeTab, setActiveTab] = useState<TrendTab>('近7天');
+  const [activeTab, setActiveTab] = useState<TrendTab>('近三天');
   const isOpen = title !== null;
 
   // Reset tab whenever the modal re-opens for a different metric.
   useEffect(() => {
     if (isOpen) {
-      setActiveTab('近7天');
+      setActiveTab('近三天');
     }
   }, [isOpen, title]);
 
@@ -174,7 +174,7 @@ export default function MetricTrendModal({ title, onClose }: MetricTrendModalPro
             </span>
             <span className="flex items-center gap-1.5 text-rose-500">
               <span className="h-[3px] w-5 rounded-full bg-rose-500" />
-              组平均值
+              部门平均值
             </span>
           </div>
         </div>
@@ -228,7 +228,7 @@ export default function MetricTrendModal({ title, onClose }: MetricTrendModalPro
               <Line
                 type="monotone"
                 dataKey="groupAverage"
-                name="组平均值"
+                name="部门平均值"
                 stroke="#f5384a"
                 strokeWidth={2}
                 strokeDasharray="5 4"

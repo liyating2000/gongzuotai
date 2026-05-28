@@ -32,6 +32,10 @@ export type LegacyModulePage =
   | 'webchat-blacklist-approval'
   | 'user-system-management';
 
+export type LegacyModuleFilterPreset =
+  | { page: 'summary-management'; filters: { status: string } }
+  | { page: 'webchat-history-query'; filters: { summarized: string } };
+
 export const legacyModuleLabels: Record<LegacyModulePage, string> = {
   'recording-query': '录音查询',
   'sample-recording-query': '范例录音查询',
@@ -633,7 +637,7 @@ function SummaryHotlinePlayer() {
   );
 }
 
-export default function LegacyModulesPanel({ page, onOpenMainTab }: { page: LegacyModulePage; onOpenMainTab?: (tab: string) => void }) {
+export default function LegacyModulesPanel({ page, onOpenMainTab, filterPreset, onFilterPresetConsumed }: { page: LegacyModulePage; onOpenMainTab?: (tab: string) => void; filterPreset?: LegacyModuleFilterPreset | null; onFilterPresetConsumed?: () => void }) {
   const currentSummaryAgent = '坐席A';
   const [toast, setToast] = useState<string | null>(null);
   const [userSystems, setUserSystems] = useState(userSystemRows);
@@ -3265,6 +3269,18 @@ export default function LegacyModulesPanel({ page, onOpenMainTab }: { page: Lega
   const [smsDetailTarget, setSmsDetailTarget] = useState<null | { receiverNo: string; content: string }>(null);
   const [webchatHistoryFilterForm, setWebchatHistoryFilterForm] = useState({ ...defaultWebchatHistoryFilters });
   const [webchatHistoryFilters, setWebchatHistoryFilters] = useState({ ...defaultWebchatHistoryFilters });
+  useEffect(() => {
+    if (!filterPreset) return;
+    if (filterPreset.page === 'summary-management' && page === 'summary-management') {
+      setSummaryFilters(prev => ({ ...prev, ...filterPreset.filters }));
+    }
+    if (filterPreset.page === 'webchat-history-query' && page === 'webchat-history-query') {
+      setWebchatHistoryFilterForm(prev => ({ ...prev, ...filterPreset.filters }));
+      setWebchatHistoryFilters(prev => ({ ...prev, ...filterPreset.filters }));
+    }
+    onFilterPresetConsumed?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [webchatMessageFilterForm, setWebchatMessageFilterForm] = useState({ ...defaultWebchatMessageFilters });
   const [webchatMessageFilters, setWebchatMessageFilters] = useState({ ...defaultWebchatMessageFilters });
   const [selectedWebchatHistoryIds, setSelectedWebchatHistoryIds] = useState<string[]>([]);

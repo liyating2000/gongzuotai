@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ChevronDown,
   Download,
-  GraduationCap,
 } from 'lucide-react';
 
 import { cn } from '../../lib/cn';
@@ -13,7 +12,6 @@ import {
   portalDetailCardClassName,
   portalExportButtonClassName,
 } from './portalStyles';
-import CoachingModal, { type CoachingAbnormalInfo } from './CoachingModal';
 
 type MetricDailyBreakdownPageProps = {
   metricLabel: string;
@@ -78,12 +76,10 @@ const formatValue = (kind: ValueKind, raw: number) => {
 const NAME_COL_WIDTH = 108;
 const TOTAL_COL_WIDTH = 100;
 const ABNORMAL_COL_WIDTH = 88;
-const ACTION_COL_WIDTH = 96;
 const DAY_COL_WIDTH = 64;
 
 const STICKY_TOTAL_LEFT = NAME_COL_WIDTH;
 const STICKY_ABNORMAL_LEFT = NAME_COL_WIDTH + TOTAL_COL_WIDTH;
-const STICKY_ACTION_LEFT = NAME_COL_WIDTH + TOTAL_COL_WIDTH + ABNORMAL_COL_WIDTH;
 
 type Row = {
   name: string;
@@ -103,8 +99,6 @@ export default function MetricDailyBreakdownPage({
   const [month, setMonth] = useState(monthOptions[0]);
   const [onlyAbnormal, setOnlyAbnormal] = useState(false);
   const [sortByAbnormal, setSortByAbnormal] = useState(true);
-  const [coachingTarget, setCoachingTarget] = useState<Row | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
 
   const { rows, days, kind } = useMemo(() => {
     const kind = detectKind(metricLabel);
@@ -185,7 +179,7 @@ export default function MetricDailyBreakdownPage({
               <span className="ml-2 text-[12px] font-medium text-slate-400">日明细</span>
             </h2>
             <div className="mt-0.5 truncate text-[12px] text-slate-400">
-              姓名、总数、异常、操作四列固定，向右滚动查看每日数值
+              姓名、总数、异常三列固定，向右滚动查看每日数值
             </div>
           </div>
         </div>
@@ -272,7 +266,10 @@ export default function MetricDailyBreakdownPage({
                 总数
               </th>
               <th
-                className="sticky z-30 border-r border-hairline bg-slate-100 px-4 py-3 text-center font-semibold"
+                className={cn(
+                  'sticky z-30 border-r border-hairline bg-slate-100 px-4 py-3 text-center font-semibold',
+                  'shadow-[1px_0_0_rgba(15,23,42,0.05)]'
+                )}
                 style={{
                   left: STICKY_ABNORMAL_LEFT,
                   width: ABNORMAL_COL_WIDTH,
@@ -280,19 +277,6 @@ export default function MetricDailyBreakdownPage({
                 }}
               >
                 异常
-              </th>
-              <th
-                className={cn(
-                  'sticky z-30 border-r border-hairline bg-slate-100 px-4 py-3 text-center font-semibold',
-                  'shadow-[1px_0_0_rgba(15,23,42,0.05)]'
-                )}
-                style={{
-                  left: STICKY_ACTION_LEFT,
-                  width: ACTION_COL_WIDTH,
-                  minWidth: ACTION_COL_WIDTH,
-                }}
-              >
-                操作
               </th>
               {days.map((d) => (
                 <th
@@ -337,6 +321,7 @@ export default function MetricDailyBreakdownPage({
                   <td
                     className={cn(
                       'sticky z-10 border-r border-hairline px-2 py-2.5 text-center tabular-nums',
+                      'shadow-[1px_0_0_rgba(15,23,42,0.05)]',
                       rowBg
                     )}
                     style={{
@@ -355,34 +340,6 @@ export default function MetricDailyBreakdownPage({
                         正常
                       </span>
                     )}
-                  </td>
-                  <td
-                    className={cn(
-                      'sticky z-10 border-r border-hairline px-2 py-2.5 text-center',
-                      'shadow-[1px_0_0_rgba(15,23,42,0.05)]',
-                      rowBg
-                    )}
-                    style={{
-                      left: STICKY_ACTION_LEFT,
-                      width: ACTION_COL_WIDTH,
-                      minWidth: ACTION_COL_WIDTH,
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setCoachingTarget(row)}
-                      disabled={abnormalCount === 0}
-                      className={cn(
-                        'focus-ring press-lift inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all',
-                        abnormalCount > 0
-                          ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-white shadow-[0_6px_14px_-6px_rgba(245,158,11,0.6)] hover:brightness-105'
-                          : 'cursor-not-allowed bg-slate-100 text-slate-400'
-                      )}
-                      title={abnormalCount > 0 ? '针对该员工发起辅导' : '无异常'}
-                    >
-                      <GraduationCap size={12} />
-                      辅导
-                    </button>
                   </td>
                   {row.daily.map((v, i) => {
                     const isAb = row.abnormalSet.has(i);
@@ -406,7 +363,7 @@ export default function MetricDailyBreakdownPage({
             {displayRows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={4 + days.length}
+                  colSpan={3 + days.length}
                   className="px-6 py-12 text-center text-[13px] text-slate-400"
                 >
                   当前筛选条件下无数据
@@ -422,49 +379,12 @@ export default function MetricDailyBreakdownPage({
           共 {displayRows.length} / {rows.length} 人 · {days.length} 天 · 数据类型：
           {kind === 'percent' ? '百分比' : kind === 'duration' ? '时长' : '数量'}
         </span>
-        <span className="inline-flex items-center gap-3">
-          <span className="inline-flex items-center gap-1">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-rose-100 ring-1 ring-inset ring-rose-200" />
-            异常单元格
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <GraduationCap size={12} className="text-amber-500" />
-            一键发起辅导
-          </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-rose-100 ring-1 ring-inset ring-rose-200" />
+          异常单元格
         </span>
       </div>
 
-      {toast ? (
-        <div className="pointer-events-none fixed bottom-10 left-1/2 z-[140] -translate-x-1/2 rounded-full bg-slate-900/90 px-5 py-2 text-[13px] font-medium text-white shadow-[0_20px_50px_rgba(15,23,42,0.35)]">
-          {toast}
-        </div>
-      ) : null}
-
-      {coachingTarget ? (
-        <CoachingModal
-          isOpen
-          agentName={coachingTarget.name}
-          agentNumber={coachingTarget.agentNumber}
-          skillGroup={coachingTarget.skillGroup}
-          metricLabel={metricLabel}
-          month={month}
-          abnormal={{
-            days: coachingTarget.abnormalDays,
-            total: coachingTarget.total,
-            meanLabel: coachingTarget.meanLabel,
-          } satisfies CoachingAbnormalInfo}
-          onClose={() => setCoachingTarget(null)}
-          onSubmit={({ channel }) => {
-            const channelLabel =
-              channel === 'call' ? '即时通话' : channel === 'feishu' ? '飞书消息' : '预约 1v1';
-            setToast(
-              `已通过【${channelLabel}】向 ${coachingTarget.name} 发起 ${metricLabel} 辅导`
-            );
-            setCoachingTarget(null);
-            window.setTimeout(() => setToast(null), 2600);
-          }}
-        />
-      ) : null}
     </div>
   );
 }

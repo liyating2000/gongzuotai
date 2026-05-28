@@ -4,6 +4,7 @@
  */
 
 import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import type { LegacyModuleFilterPreset } from './features/legacy/LegacyModulesPanel';
 import logoImage from './logo.png';
 import channelMobileIcon from './assets/channel-icons/移动端.png';
 import channelWebIcon from './assets/channel-icons/Web端.png';
@@ -3623,6 +3624,7 @@ export default function App() {
   const [agentSubTab, setAgentSubTab] = useState<'online' | 'hotline'>(() =>
     getAgentChannelForRole(initialUserRole)
   );
+  const pendingFilterPresetRef = useRef<LegacyModuleFilterPreset | null>(null);
   const [portalGreeting, setPortalGreeting] = useState(() => getPortalGreetingByTime(userRoleLabels[initialUserRole]));
   
   // Modal states
@@ -3902,8 +3904,10 @@ export default function App() {
   const [selectedDirectorMessage, setSelectedDirectorMessage] = useState<DirectorExpressMessage | null>(null);
   const [directorMessages, setDirectorMessages] = useState<DirectorExpressMessage[]>(initialDirectorMessages);
   const [newDirectorMessageContent, setNewDirectorMessageContent] = useState('');
+  const [newDirectorMessageTitle, setNewDirectorMessageTitle] = useState('');
   const [isDirectorMessageAnonymous, setIsDirectorMessageAnonymous] = useState(true);
   const [directorReplyText, setDirectorReplyText] = useState('');
+  const [directorReplyImage, setDirectorReplyImage] = useState<string | null>(null);
   const unreadDirectorMessageCount = directorMessages.filter((message) => message.hasNew).length;
 
   useEffect(() => {
@@ -3913,13 +3917,14 @@ export default function App() {
   }, [showDirectorModal]);
 
   const handleSendDirectorMessage = () => {
+    const trimmedTitle = newDirectorMessageTitle.trim();
     const trimmedContent = newDirectorMessageContent.trim();
-    if (!trimmedContent) return;
+    if (!trimmedTitle || !trimmedContent) return;
 
     const timestamp = new Date().toLocaleString();
     const newMessage: DirectorExpressMessage = {
       id: createNextDirectorMessageId(directorMessages),
-      title: '新信件',
+      title: trimmedTitle,
       sender: 'Ranou',
       recipient: 'zongjian',
       isAnonymous: isDirectorMessageAnonymous,
@@ -3933,6 +3938,7 @@ export default function App() {
 
     setDirectorMessages((currentMessages) => [newMessage, ...currentMessages]);
     setNewDirectorMessageContent('');
+    setNewDirectorMessageTitle('');
     setDirectorView('list');
   };
 
@@ -3955,7 +3961,8 @@ export default function App() {
 
   const handleSendDirectorReply = () => {
     const trimmedReply = directorReplyText.trim();
-    if (!trimmedReply || !selectedDirectorMessage) return;
+    if (!trimmedReply && !directorReplyImage) return;
+    if (!selectedDirectorMessage) return;
 
     const timestamp = new Date().toLocaleString();
     const replySender = viewMode === 'manager' ? 'zongjian' : 'Ranou';
@@ -3965,7 +3972,7 @@ export default function App() {
       updatedAt: timestamp,
       replies: [
         ...selectedDirectorMessage.replies,
-        { sender: replySender, content: trimmedReply, timestamp },
+        { sender: replySender, content: trimmedReply, timestamp, image: directorReplyImage ?? undefined },
       ],
     };
 
@@ -3976,6 +3983,7 @@ export default function App() {
     );
     setSelectedDirectorMessage(updatedSelectedMessage);
     setDirectorReplyText('');
+    setDirectorReplyImage(null);
   };
   
   // Portal dashboard states
@@ -7534,6 +7542,8 @@ export default function App() {
                 'appointment-message-management'
               }
               onOpenMainTab={handleOpenMainTab}
+              filterPreset={pendingFilterPresetRef.current}
+              onFilterPresetConsumed={() => { pendingFilterPresetRef.current = null; }}
             />
           </Suspense>
         ) : (
@@ -7609,7 +7619,15 @@ export default function App() {
                 onOpenWorkOrder={() => handleOpenMainTab('工单管理')}
                 onOpenCustomerFollow={() => handleOpenMainTab('预约回电管理')}
                 onOpenCourseList={() => handleOpenMainTab('学习课程')}
-                onOpenSummaryManagement={() => handleOpenMainTab('小结管理')}
+                onOpenSummaryManagement={() => {
+                  if (agentSubTab === 'hotline') {
+                    pendingFilterPresetRef.current = { page: 'summary-management', filters: { status: '暂存' } };
+                    handleOpenMainTab('小结管理');
+                  } else {
+                    pendingFilterPresetRef.current = { page: 'webchat-history-query', filters: { summarized: '未小结' } };
+                    handleOpenMainTab('网聊历史查询');
+                  }
+                }}
               />
             </Suspense>
           )}
@@ -7878,14 +7896,18 @@ export default function App() {
             messages={directorMessages}
             selectedMessage={selectedDirectorMessage}
             newMessageContent={newDirectorMessageContent}
+            newMessageTitle={newDirectorMessageTitle}
             isAnonymous={isDirectorMessageAnonymous}
             replyText={directorReplyText}
+            replyImage={directorReplyImage}
             onClose={() => setShowDirectorModal(false)}
             onViewChange={setDirectorView}
             onMessageSelect={handleSelectDirectorMessage}
             onNewMessageContentChange={setNewDirectorMessageContent}
+            onNewMessageTitleChange={setNewDirectorMessageTitle}
             onAnonymousChange={setIsDirectorMessageAnonymous}
             onReplyTextChange={setDirectorReplyText}
+            onReplyImageChange={setDirectorReplyImage}
             onSendMessage={handleSendDirectorMessage}
             onSendReply={handleSendDirectorReply}
           />

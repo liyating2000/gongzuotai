@@ -4,6 +4,7 @@ export type DirectorExpressReply = {
   sender: string;
   content: string;
   timestamp: string;
+  image?: string;
 };
 
 export type DirectorExpressMessage = {

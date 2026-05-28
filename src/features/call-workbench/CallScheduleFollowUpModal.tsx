@@ -91,7 +91,8 @@ export default function CallScheduleFollowUpModal({
   if (!isOpen) return null;
 
   const isSubmitDisabled =
-    !formValues.phoneNumber.trim() || !formValues.callbackTime.trim();
+    !formValues.phoneNumber.trim() ||
+    (formValues.assigneeMode === 'me' && !formValues.callbackTime.trim());
 
   // Portal to document.body so the fixed overlay escapes any ancestor
   // `transform` that would otherwise become its containing block.
@@ -152,69 +153,22 @@ export default function CallScheduleFollowUpModal({
             />
           </FormField>
 
-          {/* 回拨时间 */}
-          <FormField label="回拨时间" required alignStart={formValues.callbackTimeMode === 'scheduled'}>
+          {/* 回电人 */}
+          <FormField label="回电人" required alignStart={formValues.assigneeMode === 'department'}>
             <div className="space-y-2">
               <SegmentedToggle
-                value={formValues.callbackTimeMode}
+                value={formValues.assigneeMode}
                 options={[
-                  { value: 'immediate', label: '立即' },
-                  { value: 'scheduled', label: '选择时间' },
+                  { value: 'me', label: '我' },
+                  { value: 'department', label: '部门' },
                 ]}
                 onChange={(next) =>
                   setFormValues((prev) => ({
                     ...prev,
-                    callbackTimeMode: next,
-                    assigneeMode: next === 'immediate' ? 'department' : prev.assigneeMode,
+                    assigneeMode: next,
                   }))
                 }
               />
-              {formValues.callbackTimeMode === 'scheduled' ? (
-                <div className="relative">
-                  <input
-                    ref={dateInputRef}
-                    type="datetime-local"
-                    step={1}
-                    value={formValues.callbackTime}
-                    onChange={(event) =>
-                      setFormValues((prev) => ({
-                        ...prev,
-                        callbackTime: event.target.value,
-                      }))
-                    }
-                    className={cn(fieldInputClass, 'pr-10')}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => dateInputRef.current?.showPicker?.()}
-                    className="focus-ring absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-brand-50 hover:text-brand-600"
-                    aria-label="选择回拨时间"
-                  >
-                    <CalendarDays size={15} />
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </FormField>
-
-          {/* 回电人 */}
-          <FormField label="回电人" required alignStart={formValues.assigneeMode === 'department'}>
-            <div className="space-y-2">
-              {formValues.callbackTimeMode === 'immediate' ? null : (
-                <SegmentedToggle
-                  value={formValues.assigneeMode}
-                  options={[
-                    { value: 'me', label: '我' },
-                    { value: 'department', label: '部门' },
-                  ]}
-                  onChange={(next) =>
-                    setFormValues((prev) => ({
-                      ...prev,
-                      assigneeMode: next,
-                    }))
-                  }
-                />
-              )}
               {formValues.assigneeMode === 'department' ? (
                 <div className="relative">
                   <select
@@ -241,6 +195,35 @@ export default function CallScheduleFollowUpModal({
               ) : null}
             </div>
           </FormField>
+
+          {/* 回电时间 — 仅回电人选"我"时显示 */}
+          {formValues.assigneeMode === 'me' ? (
+            <FormField label="回电时间" required alignStart>
+              <div className="relative">
+                <input
+                  ref={dateInputRef}
+                  type="datetime-local"
+                  step={1}
+                  value={formValues.callbackTime}
+                  onChange={(event) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      callbackTime: event.target.value,
+                    }))
+                  }
+                  className={cn(fieldInputClass, 'pr-10')}
+                />
+                <button
+                  type="button"
+                  onClick={() => dateInputRef.current?.showPicker?.()}
+                  className="focus-ring absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-brand-50 hover:text-brand-600"
+                  aria-label="选择回电时间"
+                >
+                  <CalendarDays size={15} />
+                </button>
+              </div>
+            </FormField>
+          ) : null}
 
           {/* 备注 */}
           <FormField label="备注" alignStart>

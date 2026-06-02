@@ -146,6 +146,7 @@ type OnlineConversationPanelProps = {
   composerActionLabel: string;
   onSubmitComposer: () => void;
   composerMessageIconSrc: string;
+  onUtilityItemClick?: (label: string) => void;
 };
 
 export default function OnlineConversationPanel({
@@ -205,6 +206,7 @@ export default function OnlineConversationPanel({
   composerActionLabel,
   onSubmitComposer,
   composerMessageIconSrc,
+  onUtilityItemClick,
 }: OnlineConversationPanelProps) {
   const utilityTriggerRef = useRef<HTMLButtonElement | null>(null);
   const utilityCloseTimerRef = useRef<number | null>(null);
@@ -728,6 +730,7 @@ export default function OnlineConversationPanel({
                         <button
                           key={item.label}
                           type="button"
+                          onClick={() => onUtilityItemClick?.(item.label)}
                           className="focus-ring press-lift rounded-xl border border-hairline bg-surface-sunken px-2 py-3.5 text-center transition-all duration-200 hover:border-brand-200 hover:bg-brand-50/40"
                         >
                           <div className="mx-auto flex h-[35px] w-[35px] items-center justify-center">

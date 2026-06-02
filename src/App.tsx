@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import type { LegacyModuleFilterPreset } from './features/legacy/LegacyModulesPanel';
 import logoImage from './logo.png';
 import channelMobileIcon from './assets/channel-icons/移动端.png';
@@ -143,6 +143,9 @@ import TaggingModal from './features/workbench/TaggingModal';
 import ProblemClassificationSearchModal, {
   type ProblemClassificationCombo,
 } from './features/workbench/ProblemClassificationSearchModal';
+import SchoolSearchModal, { type SchoolRecord } from './features/workbench/SchoolSearchModal';
+import CreateTpdWorkOrderModal from './features/workbench/CreateTpdWorkOrderModal';
+import AttachmentQueryModal from './features/workbench/AttachmentQueryModal';
 import CallWorkbenchContentView from './features/call-workbench/CallWorkbenchContent';
 import CallRightSidebar from './features/call-workbench/CallRightSidebar';
 import {
@@ -322,7 +325,7 @@ type OnlineSidebarFeatureKey =
 type OnlineThirdPartyScope = 'public' | 'personal';
 type OnlineCallOverlay = 'audio' | 'video';
 type OnlineMessageTranslateLanguage = 'zh' | 'en';
-type OnlineFormFieldOption = '姓名' | '学校' | '学校省份' | '联系电话';
+type OnlineFormFieldOption = '姓名' | '学校名称' | '学校省份' | '联系电话';
 type OnlineUtilityItem = {
   label: string;
   note: string;
@@ -462,8 +465,9 @@ type WorkbenchFieldConfig = {
   label: string;
   placeholder: string;
   required?: boolean;
-  type?: 'input' | 'select';
+  type?: 'input' | 'select' | 'school-search';
   span?: 1 | 2 | 3;
+  disabledUntilSchool?: boolean;
 };
 
 type WorkbenchFieldValues = Record<string, string>;
@@ -563,13 +567,13 @@ const workbenchCustomerFields: WorkbenchFieldConfig[] = [
   { label: '客户类型', placeholder: '请选择', type: 'select' },
   { label: '来电号码', placeholder: '请输入', type: 'input' },
   { label: '省市区', placeholder: '请选择', type: 'select' },
-  { label: '学校', placeholder: '请选择', type: 'select' },
+  { label: '学校名称', placeholder: '请输入关键字查询', type: 'school-search' },
   { label: '运营商', placeholder: '请选择', type: 'select' },
   { label: '客户名称', placeholder: '请输入', type: 'input' },
   { label: '联系号码', placeholder: '请输入', type: 'input' },
-  { label: '学校标签', placeholder: '请输入', type: 'input' },
-  { label: '服务归口', placeholder: '请输入', type: 'input' },
-  { label: '是否审核', placeholder: '请选择', type: 'select' },
+  { label: '学校标签', placeholder: '', type: 'input', disabledUntilSchool: true },
+  { label: '服务归口', placeholder: '', type: 'input', disabledUntilSchool: true },
+  { label: '是否审核', placeholder: '', type: 'select', disabledUntilSchool: true },
 ];
 
 const workbenchSummaryFields: WorkbenchFieldConfig[] = [
@@ -612,6 +616,7 @@ const workbenchToolItems: Record<WorkbenchToolTab, Array<{ label: string; icon?:
     { label: '售后维修价格', imageSrc: toolRepairPriceIcon },
     { label: '售后付款', imageSrc: toolPaymentIcon },
     { label: '家庭圈信息查询', imageSrc: toolAttachmentIcon },
+    { label: '学习机查询', imageSrc: toolServicePointIcon },
   ],
   '第三方网站': [
     { label: 'CRM系统', icon: Monitor, accent: 'text-sky-500', bg: 'bg-sky-50' },
@@ -1091,13 +1096,13 @@ const onlineCustomerFields: WorkbenchFieldConfig[] = [
   { label: '客户类型', placeholder: '请选择', required: true, type: 'select' },
   { label: '来电号码', placeholder: '请输入', type: 'input' },
   { label: '省市区', placeholder: '请选择', type: 'select' },
-  { label: '学校', placeholder: '请选择', type: 'select' },
+  { label: '学校名称', placeholder: '请输入关键字查询', type: 'school-search' },
   { label: '运营商', placeholder: '请选择', type: 'select' },
   { label: '客户名称', placeholder: '请输入', type: 'input' },
   { label: '联系号码', placeholder: '请输入', type: 'input' },
-  { label: '学校标签', placeholder: '请输入', type: 'input' },
-  { label: '服务归口', placeholder: '请输入', type: 'input' },
-  { label: '是否审核', placeholder: '请选择', type: 'select' },
+  { label: '学校标签', placeholder: '', type: 'input', disabledUntilSchool: true },
+  { label: '服务归口', placeholder: '', type: 'input', disabledUntilSchool: true },
+  { label: '是否审核', placeholder: '', type: 'select', disabledUntilSchool: true },
 ];
 
 const onlineUtilityItems: Record<OnlineUtilityTab, OnlineUtilityItem[]> = {
@@ -1297,7 +1302,7 @@ const callWorkbenchInboundProfile: CallWorkbenchInboundProfile = {
     客户类型: 'VIP客户',
     来电号码: '17601672305',
     省市区: '北京市 / 北京市 / 海淀区',
-    学校: '科大附中',
+    学校名称: '科大附中',
     运营商: '电信',
     客户名称: '王同学',
     联系号码: '17601672305',
@@ -1747,7 +1752,7 @@ const onlineSessionRightPanelDetails: Record<string, OnlineSessionRightPanelDeta
         客户类型: '老客',
         来电号码: '13800008989',
         省市区: '北京市/北京市/朝阳区',
-        学校: '朝阳外国语学校',
+        学校名称: '朝阳外国语学校',
         运营商: '中国移动',
         客户名称: '李女士',
         联系号码: '13800008989',
@@ -1878,7 +1883,7 @@ const onlineSessionRightPanelDetails: Record<string, OnlineSessionRightPanelDeta
         客户类型: 'VIP客户',
         来电号码: '17600002305',
         省市区: '北京市/北京市/海淀区',
-        学校: '北京理工附中',
+        学校名称: '北京理工附中',
         运营商: '中国联通',
         客户名称: '王先生',
         联系号码: '17600002305',
@@ -2009,7 +2014,7 @@ const onlineSessionRightPanelDetails: Record<string, OnlineSessionRightPanelDeta
         客户类型: '新客',
         来电号码: '13900008993',
         省市区: '河北省/石家庄市/长安区',
-        学校: '石家庄四十二中',
+        学校名称: '石家庄四十二中',
         运营商: '中国电信',
         客户名称: '赵先生',
         联系号码: '13900008993',
@@ -2140,7 +2145,7 @@ const onlineSessionRightPanelDetails: Record<string, OnlineSessionRightPanelDeta
         客户类型: '回访线索',
         来电号码: '15800002999',
         省市区: '上海市/上海市/浦东新区',
-        学校: '浦东新区实验学校',
+        学校名称: '浦东新区实验学校',
         运营商: '中国移动',
         客户名称: '周女士',
         联系号码: '15800002999',
@@ -2271,7 +2276,7 @@ const onlineSessionRightPanelDetails: Record<string, OnlineSessionRightPanelDeta
         客户类型: '企业客户',
         来电号码: '18600000139',
         省市区: '广东省/深圳市/南山区',
-        学校: '深圳南山实验学校',
+        学校名称: '深圳南山实验学校',
         运营商: '中国移动',
         客户名称: '陈经理',
         联系号码: '18600000139',
@@ -2402,7 +2407,7 @@ const onlineSessionRightPanelDetails: Record<string, OnlineSessionRightPanelDeta
         客户类型: '售后老客',
         来电号码: '17700000909',
         省市区: '江苏省/南京市/鼓楼区',
-        学校: '南京师范附属中学',
+        学校名称: '南京师范附属中学',
         运营商: '中国联通',
         客户名称: '孙女士',
         联系号码: '17700000909',
@@ -2533,7 +2538,7 @@ const onlineSessionRightPanelDetails: Record<string, OnlineSessionRightPanelDeta
         客户类型: '直播线索',
         来电号码: '18500000909',
         省市区: '浙江省/杭州市/西湖区',
-        学校: '杭州学军小学',
+        学校名称: '杭州学军小学',
         运营商: '中国移动',
         客户名称: '吴女士',
         联系号码: '18500000909',
@@ -2664,7 +2669,7 @@ const onlineSessionRightPanelDetails: Record<string, OnlineSessionRightPanelDeta
         客户类型: '退款客户',
         来电号码: '13100000909',
         省市区: '天津市/天津市/南开区',
-        学校: '天津南开中学',
+        学校名称: '天津南开中学',
         运营商: '中国联通',
         客户名称: '刘先生',
         联系号码: '13100000909',
@@ -2815,7 +2820,7 @@ const createInitialOnlineBusinessTypeStore = (): Record<string, string> =>
       detail.customerProfile.businessType,
     ])
   );
-const onlineFormFieldOptions: OnlineFormFieldOption[] = ['姓名', '学校', '学校省份', '联系电话'];
+const onlineFormFieldOptions: OnlineFormFieldOption[] = ['姓名', '学校名称', '学校省份', '联系电话'];
 const onlineMessageEnglishTranslations: Record<string, string> = {
   'sess-1-m-1': 'The learning tablet is losing power very quickly lately. It only lasts about two hours.',
   'sess-1-m-3': 'The model is T10. I started noticing the issue clearly last week.',
@@ -3445,7 +3450,7 @@ const formatRegionValue = (selection: RegionSelection) =>
 const workbenchSelectOptions: Record<string, readonly string[]> = {
   '业务类型': onlineBusinessTypeOptions,
   '客户类型': ['普通客户', '潜在客户', 'VIP客户'],
-  '学校': ['第一中学', '实验小学', '科大附中'],
+  '学校名称': ['第一中学', '实验小学', '科大附中'],
   '运营商': ['移动', '联通', '电信'],
   '是否审核': ['是', '否'],
   '是否结婚': ['是', '否'],
@@ -3462,6 +3467,34 @@ const workbenchSelectOptions: Record<string, readonly string[]> = {
   '投诉分类一级': ['服务态度', '处理时效', '产品质量'],
   '投诉分类二级': ['一级升级', '二级升级', '专项跟进'],
 };
+
+const schoolDatabase: ReadonlyArray<SchoolRecord> = [
+  { name: '科大附中', address: '北京市海淀区中关村南大街1号', label: '对学习机有兴趣', serviceGroup: 'A技能组', auditStatus: '是', province: '北京市', city: '北京市', district: '海淀区' },
+  { name: '北京四中', address: '北京市西城区西黄城根北街甲2号', label: '高中', serviceGroup: 'A技能组', auditStatus: '已审核', province: '北京市', city: '北京市', district: '西城区' },
+  { name: '朝阳外国语学校', address: '北京市朝阳区慧忠里232号', label: '初中', serviceGroup: '移动服务组', auditStatus: '已审核', province: '北京市', city: '北京市', district: '朝阳区' },
+  { name: '北京理工附中', address: '北京市海淀区车道沟东路1号', label: '高校家庭', serviceGroup: 'Web金融咨询组', auditStatus: '待审核', province: '北京市', city: '北京市', district: '海淀区' },
+  { name: '人大附中', address: '北京市海淀区中关村大街37号', label: '高中', serviceGroup: 'A技能组', auditStatus: '已审核', province: '北京市', city: '北京市', district: '海淀区' },
+  { name: '北京101中学', address: '北京市海淀区颐和园路11号', label: '高中', serviceGroup: '移动服务组', auditStatus: '已审核', province: '北京市', city: '北京市', district: '海淀区' },
+  { name: '天津南开中学', address: '天津市南开区南开四马路22号', label: '初中', serviceGroup: '公众号服务组', auditStatus: '已审核', province: '天津市', city: '天津市', district: '南开区' },
+  { name: '天津一中', address: '天津市和平区西安道117号', label: '高中', serviceGroup: 'A技能组', auditStatus: '待审核', province: '天津市', city: '天津市', district: '和平区' },
+  { name: '浦东新区实验学校', address: '上海市浦东新区东方路1500号', label: '小学', serviceGroup: 'Web售前组', auditStatus: '已审核', province: '上海市', city: '上海市', district: '浦东新区' },
+  { name: '上海中学', address: '上海市徐汇区上中路400号', label: '高中', serviceGroup: 'A技能组', auditStatus: '已审核', province: '上海市', city: '上海市', district: '徐汇区' },
+  { name: '石家庄四十二中', address: '河北省石家庄市长安区谈固东街26号', label: '初中', serviceGroup: '短视频渠道组', auditStatus: '未审核', province: '河北省', city: '石家庄市', district: '长安区' },
+  { name: '石家庄二中', address: '河北省石家庄市新华区中华北大街55号', label: '高中', serviceGroup: 'A技能组', auditStatus: '已审核', province: '河北省', city: '石家庄市', district: '新华区' },
+  { name: '深圳南山实验学校', address: '广东省深圳市南山区南光路100号', label: '企业项目', serviceGroup: '小程序服务组', auditStatus: '已审核', province: '广东省', city: '深圳市', district: '南山区' },
+  { name: '深圳中学', address: '广东省深圳市罗湖区人民北路深中街18号', label: '高中', serviceGroup: 'A技能组', auditStatus: '已审核', province: '广东省', city: '深圳市', district: '罗湖区' },
+  { name: '南京师范附属中学', address: '江苏省南京市鼓楼区察哈尔路37号', label: '高中', serviceGroup: '公众号服务组', auditStatus: '已审核', province: '江苏省', city: '南京市', district: '鼓楼区' },
+  { name: '南京外国语学校', address: '江苏省南京市玄武区北京东路30号', label: '初中', serviceGroup: 'Web售前组', auditStatus: '待审核', province: '江苏省', city: '南京市', district: '玄武区' },
+  { name: '杭州学军小学', address: '浙江省杭州市西湖区求智巷6号', label: '小学', serviceGroup: '抖音电商组', auditStatus: '待审核', province: '浙江省', city: '杭州市', district: '西湖区' },
+  { name: '杭州二中', address: '浙江省杭州市滨江区东信大道76号', label: '高中', serviceGroup: 'A技能组', auditStatus: '已审核', province: '浙江省', city: '杭州市', district: '滨江区' },
+  { name: '实验小学', address: '北京市西城区南新华街17号', label: '小学', serviceGroup: '移动服务组', auditStatus: '已审核', province: '北京市', city: '北京市', district: '西城区' },
+  { name: '第一中学', address: '北京市东城区鼓楼东大街宝钞胡同12号', label: '初中', serviceGroup: 'A技能组', auditStatus: '已审核', province: '北京市', city: '北京市', district: '东城区' },
+  { name: '苏州实验中学', address: '江苏省苏州市工业园区东振路29号', label: '初中', serviceGroup: 'Web售前组', auditStatus: '已审核', province: '江苏省', city: '苏州市', district: '工业园区' },
+  { name: '哈尔滨三中', address: '黑龙江省哈尔滨市南岗区德育街47号', label: '高中', serviceGroup: 'A技能组', auditStatus: '已审核', province: '黑龙江省', city: '哈尔滨市', district: '南岗区' },
+  { name: '长春实验中学', address: '吉林省长春市南关区公平路2号', label: '初中', serviceGroup: '移动服务组', auditStatus: '待审核', province: '吉林省', city: '长春市', district: '南关区' },
+  { name: '大连育明高中', address: '辽宁省大连市沙河口区五一路150号', label: '高中', serviceGroup: 'A技能组', auditStatus: '已审核', province: '辽宁省', city: '大连市', district: '沙河口区' },
+  { name: '重庆巴蜀中学', address: '重庆市渝中区北区路51号', label: '高中', serviceGroup: '公众号服务组', auditStatus: '已审核', province: '重庆市', city: '重庆市', district: '渝中区' },
+];
 
 const problemClassificationCombos: ReadonlyArray<ProblemClassificationCombo> = [
   { level1: '账号问题', level2: '登录异常', level3: '密码错误' },
@@ -3639,7 +3672,13 @@ export default function App() {
   const [problemClassificationSearchScope, setProblemClassificationSearchScope] = useState<
     'call-summary' | 'online-summary' | null
   >(null);
+  const [schoolSearchScope, setSchoolSearchScope] = useState<
+    'call-customer' | 'online-customer' | null
+  >(null);
+  const [schoolSearchKeyword, setSchoolSearchKeyword] = useState('');
   const [activeErrorTab, setActiveErrorTab] = useState<ErrorTabKey>('critical');
+  const [showCreateTpdModal, setShowCreateTpdModal] = useState(false);
+  const [showAttachmentQueryModal, setShowAttachmentQueryModal] = useState<'call' | 'online' | null>(null);
   const [errorModalPage, setErrorModalPage] = useState(1);
   const [callHistoryTab, setCallHistoryTab] = useState<WorkbenchHistoryTab>('通话历史');
   const [callSmsHistoryDateRange, setCallSmsHistoryDateRange] = useState<HistoryDateRangeValue>({
@@ -5073,6 +5112,7 @@ export default function App() {
                 <button
                   key={item.label}
                   type="button"
+                  onClick={item.label === '附件查询' ? () => setShowAttachmentQueryModal('call') : undefined}
                   className="rounded-lg border border-slate-100 bg-[#f7f8fb] px-2.5 py-3.5 text-center transition-colors hover:border-slate-200 hover:bg-white"
                 >
                   {item.imageSrc ? (
@@ -5902,7 +5942,47 @@ export default function App() {
         <span>{field.label}</span>
         {field.required && <span className="text-rose-400">*</span>}
       </div>
-      {field.type === 'select' ? (
+      {(() => {
+        const isDisabled = field.disabledUntilSchool && !fieldValues['学校名称'];
+        if (field.type === 'school-search') {
+          return (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                value={fieldValues[field.label] ?? ''}
+                onChange={(event) =>
+                  setFieldValues((prev) => ({
+                    ...prev,
+                    [field.label]: event.target.value,
+                  }))
+                }
+                placeholder={field.placeholder}
+                className="h-[30px] min-w-0 flex-1 rounded-md border border-slate-200 bg-[#fcfcfd] px-3 text-[12px] text-slate-600 outline-none shadow-[inset_0_1px_2px_rgba(15,23,42,0.02)] placeholder:text-slate-400"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const keyword = (fieldValues[field.label] ?? '').trim();
+                  setSchoolSearchKeyword(keyword);
+                  setSchoolSearchScope(scope as 'call-customer' | 'online-customer');
+                }}
+                className="focus-ring flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-md border border-brand-200 bg-brand-50/60 text-brand-500 transition-colors hover:bg-brand-100"
+                aria-label="查询学校"
+                title="查询学校"
+              >
+                <Search size={14} />
+              </button>
+            </div>
+          );
+        }
+        if (isDisabled) {
+          return (
+            <div className="flex h-[30px] items-center rounded-md border border-slate-200 bg-slate-100 px-3 text-[12px] text-slate-400 shadow-[inset_0_1px_2px_rgba(15,23,42,0.02)]">
+              <span>{fieldValues[field.label] || ''}</span>
+            </div>
+          );
+        }
+        return field.type === 'select' ? (
         (() => {
           const showProblemSearch =
             field.label === '问题分类三级' &&
@@ -6116,9 +6196,37 @@ export default function App() {
             className="h-[30px] w-full rounded-md border border-slate-200 bg-[#fcfcfd] px-3 text-[12px] text-slate-600 outline-none shadow-[inset_0_1px_2px_rgba(15,23,42,0.02)] placeholder:text-slate-400"
           />
         </div>
-      )}
+      );
+      })()}
     </div>
   );
+
+  const schoolSearchFilteredList = useMemo(() => {
+    const region = schoolSearchScope === 'call-customer'
+      ? callCustomerRegionSelection
+      : onlineCustomerRegionSelection;
+    return schoolDatabase.filter((school) => {
+      if (region.province && school.province !== region.province) return false;
+      if (region.city && school.city !== region.city) return false;
+      if (region.district && school.district !== region.district) return false;
+      return true;
+    });
+  }, [schoolSearchScope, callCustomerRegionSelection, onlineCustomerRegionSelection]);
+
+  const handleSchoolSelect = (school: SchoolRecord) => {
+    const updates: WorkbenchFieldValues = {
+      学校名称: school.name,
+      学校标签: school.label,
+      服务归口: school.serviceGroup,
+      是否审核: school.auditStatus,
+    };
+    if (schoolSearchScope === 'call-customer') {
+      setCallCustomerFieldValues((prev) => ({ ...prev, ...updates }));
+    } else if (schoolSearchScope === 'online-customer') {
+      updateActiveOnlineCustomerFieldValues((prev) => ({ ...prev, ...updates }));
+    }
+    setSchoolSearchScope(null);
+  };
 
   const callCustomerInfoPanelContent = (
     <CallCustomerInfoPanel
@@ -6146,6 +6254,7 @@ export default function App() {
       onScheduleFollowUp={handleOpenCallScheduleFollowUpModal}
       onBlacklist={handleOpenCallBlockConfirm}
       onOpenTaggingModal={() => handleOpenTaggingModal('call')}
+      onAttachmentQuery={() => setShowAttachmentQueryModal('call')}
     />
   );
 
@@ -6354,6 +6463,7 @@ export default function App() {
           onScheduleFollowUp={handleOpenCallScheduleFollowUpModal}
           onBlacklist={handleOpenCallBlockConfirm}
           onOpenTaggingModal={() => handleOpenTaggingModal('call')}
+          onAttachmentQuery={() => setShowAttachmentQueryModal('call')}
         />
       }
       rightSidebar={callRightSidebarContent}
@@ -6483,6 +6593,9 @@ export default function App() {
           composerActionLabel={onlineComposerActionLabel}
           onSubmitComposer={handleSubmitOnlineComposer}
           composerMessageIconSrc={chatMessageIcon}
+          onUtilityItemClick={(label) => {
+            if (label === '附件查询') setShowAttachmentQueryModal('online');
+          }}
         />
         </div>
 
@@ -6960,7 +7073,11 @@ export default function App() {
                     升级工单
                   </button>
                   {activeOnlineBusinessType === '教育' ? (
-                    <button className="rounded-full border border-[#7ee0d3] bg-[#f1fdfa] px-5 py-1.5 text-[12px] font-medium text-[#18a058]">
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateTpdModal(true)}
+                      className="rounded-full border border-[#7ee0d3] bg-[#f1fdfa] px-5 py-1.5 text-[12px] font-medium text-[#18a058]"
+                    >
                       创建TPD工单
                     </button>
                   ) : null}
@@ -7807,6 +7924,15 @@ export default function App() {
         onClose={handleCloseCallScheduleFollowUpModal}
         onConfirm={handleCloseCallScheduleFollowUpModal}
       />
+      <CreateTpdWorkOrderModal
+        isOpen={showCreateTpdModal}
+        onClose={() => setShowCreateTpdModal(false)}
+        onConfirm={() => setShowCreateTpdModal(false)}
+      />
+      <AttachmentQueryModal
+        isOpen={showAttachmentQueryModal !== null}
+        onClose={() => setShowAttachmentQueryModal(null)}
+      />
       <BlacklistApplicationModal
         isOpen={showOnlineBlacklistModal}
         defaultPhoneNumber={activeOnlineCustomerFieldValues['联系号码'] ?? ''}
@@ -7877,6 +8003,14 @@ export default function App() {
             updateOnlineSummaryFieldValues(apply);
           }
         }}
+      />
+
+      <SchoolSearchModal
+        isOpen={schoolSearchScope !== null}
+        keyword={schoolSearchKeyword}
+        schools={schoolSearchFilteredList}
+        onClose={() => setSchoolSearchScope(null)}
+        onSelect={handleSchoolSelect}
       />
 
       <TaggingModal

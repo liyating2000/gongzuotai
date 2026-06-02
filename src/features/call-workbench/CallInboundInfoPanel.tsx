@@ -33,6 +33,7 @@ const callServiceTools: Array<{ label: string; imageSrc: string }> = [
   { label: '售后付款', imageSrc: toolPaymentIcon },
   { label: '学习机价格', imageSrc: toolRepairPriceIcon },
   { label: '配件价格', imageSrc: toolRepairPriceIcon },
+  { label: '学习机查询', imageSrc: toolServicePointIcon },
 ];
 
 type CallQueueEntry = {
@@ -74,6 +75,7 @@ type CallInboundInfoPanelProps = {
   onScheduleFollowUp?: () => void;
   onBlacklist?: (anchor: { x: number; y: number }) => void;
   onOpenTaggingModal?: () => void;
+  onAttachmentQuery?: () => void;
 };
 
 export default function CallInboundInfoPanel({
@@ -83,6 +85,7 @@ export default function CallInboundInfoPanel({
   onScheduleFollowUp,
   onBlacklist,
   onOpenTaggingModal,
+  onAttachmentQuery,
 }: CallInboundInfoPanelProps) {
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const queueTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -323,6 +326,7 @@ export default function CallInboundInfoPanel({
             <button
               key={`call-frequently-used-${label}`}
               type="button"
+              onClick={label === '附件查询' ? onAttachmentQuery : undefined}
               className="focus-ring group relative rounded-lg p-1.5 transition-all duration-200 hover:bg-brand-50 hover:text-brand-600"
             >
               <span className="pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-[10px] text-white opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100">

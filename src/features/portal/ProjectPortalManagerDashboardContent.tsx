@@ -1439,7 +1439,7 @@ export default function ProjectPortalManagerDashboardContent({
               onOpenCriticalErrorModal={onOpenCriticalErrorModal}
               onOpenBreakdown={setBreakdownLabel}
             />
-            <MetricFluctuationPanel />
+            <MetricFluctuationPanel channel={onlineFilter} />
             <ChartPanel />
           </div>
 

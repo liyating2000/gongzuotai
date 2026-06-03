@@ -9,11 +9,20 @@ import {
 
 import { cn } from '../../lib/cn';
 
-type MetricKey = '解决率' | '客户满意度' | '质检平均分' | '接通量';
+type MetricKey = '解决率' | '客户满意度' | '质检平均分' | '接通量' | '接待量' | '呼叫量';
 
 type RangeKey = '近三天' | '本月' | '上月';
 
-const metricOptions: MetricKey[] = ['解决率', '客户满意度', '质检平均分', '接通量'];
+type Channel = '在线' | '热线';
+
+const volumeKeyByChannel: Record<Channel, MetricKey> = {
+  '在线': '接待量',
+  '热线': '呼叫量',
+};
+
+const getMetricOptions = (channel: Channel): MetricKey[] => [
+  '解决率', '客户满意度', '质检平均分', volumeKeyByChannel[channel],
+];
 const rangeOptions: RangeKey[] = ['近三天', '本月', '上月'];
 const rangeDays: Record<RangeKey, number> = {
   '近三天': 3,
@@ -64,6 +73,20 @@ const metricDisplay: Record<
     target: 180,
     format: (v) => Math.round(v).toString(),
   },
+  接待量: {
+    unit: '通',
+    base: 168,
+    amp: 46,
+    target: 180,
+    format: (v) => Math.round(v).toString(),
+  },
+  呼叫量: {
+    unit: '通',
+    base: 168,
+    amp: 46,
+    target: 180,
+    format: (v) => Math.round(v).toString(),
+  },
 };
 
 const focusAgentsList = [
@@ -93,13 +116,18 @@ const PADDING = { top: 16, right: 24, bottom: 28, left: 44 };
 const INNER_W = CHART_WIDTH - PADDING.left - PADDING.right;
 const INNER_H = CHART_HEIGHT - PADDING.top - PADDING.bottom;
 
-export default function MetricFluctuationPanel() {
-  const [metric, setMetric] = useState<MetricKey>('解决率');
+export default function MetricFluctuationPanel({ channel = '在线' }: { channel?: Channel }) {
+  const metricOptions = getMetricOptions(channel);
+  const [metric, setMetric] = useState<MetricKey>(metricOptions[0]);
   const [range, setRange] = useState<RangeKey>('近三天');
   const [focusAgents, setFocusAgents] = useState<Set<string>>(new Set());
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [hiddenAgents, setHiddenAgents] = useState<Set<string>>(new Set());
   const isFocused = focusAgents.size > 0;
+
+  useEffect(() => {
+    setMetric((prev) => metricOptions.includes(prev) ? prev : metricOptions[0]);
+  }, [channel]);
 
   const toggleFocus = (name: string) => {
     setFocusAgents((prev) => {

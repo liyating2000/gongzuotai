@@ -53,6 +53,14 @@ export type MenuItemConfig = {
 };
 
 export const sidebarMenuConfig: MenuItemConfig[] = [
+  // ───────── 个人门户（6月）(visible to all roles) ─────────
+  {
+    id: 'personal-portal-june',
+    label: '个人门户（6月）',
+    icon: LayoutDashboard,
+    opensTab: '个人门户（6月）',
+  },
+
   // ───────── 个人门户 (visible to all roles) ─────────
   {
     id: 'personal-portal',

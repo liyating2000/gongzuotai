@@ -4067,6 +4067,7 @@ export default function App() {
   };
   const allowedWorkbenches = getAllowedWorkbenchesForRole(userRole);
   const primaryMainTabs: PrimaryMainTab[] = [
+    '个人门户（6月）',
     '个人门户',
     ...(allowedWorkbenches.call ? (['呼叫工作台'] as const) : []),
     ...(allowedWorkbenches.online ? (['在线工作台'] as const) : []),
@@ -7685,6 +7686,7 @@ export default function App() {
           {viewMode === 'manager' ? (
             <Suspense fallback={deferredTabFallback}>
               <ManagerPortalDashboardContent
+                isJuneVariant={activeTab === '个人门户（6月）'}
                 allFilter={allFilter}
                 onlineFilter={onlineFilter}
                 trendMonth={trendMonth}
@@ -7716,6 +7718,7 @@ export default function App() {
           ) : (
             <Suspense fallback={deferredTabFallback}>
               <AgentPortalDashboardContent
+                isJuneVariant={activeTab === '个人门户（6月）'}
                 agentSubTab={agentSubTab}
                 starEmployeeMetric={starEmployeeMetric}
                 satisfactionStarEmployees={satisfactionStarEmployees}

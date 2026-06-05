@@ -46,6 +46,11 @@ type AgentPortalDashboardContentProps = {
   isChannelLocked?: boolean;
   /** When true, render the 今日待办 panel at the top of the left column. */
   showTodayTodo?: boolean;
+  /**
+   * When true (个人门户（6月）variant), hide 待学习课程 / 学习推荐 /
+   * 班次信息 / 个人能力雷达. Leaves the regular 个人门户 untouched.
+   */
+  isJuneVariant?: boolean;
   onAgentSubTabChange: (tab: AgentPortalSubTab) => void;
   onStarEmployeeMetricChange: (metric: StarEmployeeMetric) => void;
   onActiveShiftDayChange: (day: ShiftScheduleDay) => void;
@@ -216,6 +221,7 @@ export default function AgentPortalDashboardContent({
   unreadDirectorMessageCount,
   isChannelLocked = false,
   showTodayTodo = false,
+  isJuneVariant = false,
   onAgentSubTabChange,
   onStarEmployeeMetricChange,
   onActiveShiftDayChange,
@@ -348,7 +354,9 @@ export default function AgentPortalDashboardContent({
             {/* Today todo (gated — only hotline/online agents) */}
             {showTodayTodo ? (
               <TodayTodoPanel
-                items={isOnlineView ? onlineTodoItems : hotlineTodoItems}
+                items={(isOnlineView ? onlineTodoItems : hotlineTodoItems).filter(
+                  (item) => !isJuneVariant || item.key !== 'course-list'
+                )}
                 onItemClick={handleTodayTodoClick}
               />
             ) : null}
@@ -565,7 +573,8 @@ export default function AgentPortalDashboardContent({
                 </div>
               </section>
 
-              {/* Learning recommendations */}
+              {/* Learning recommendations — hidden in 6月 portal variant */}
+              {!isJuneVariant && (
               <section className="surface-card surface-card-hover p-5">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-[15px] font-bold text-slate-800">学习推荐</h3>
@@ -609,13 +618,14 @@ export default function AgentPortalDashboardContent({
                   ))}
                 </div>
               </section>
+              )}
             </div>
           </div>
 
           {/* ---------- Right rail ---------- */}
           <aside className="space-y-5">
-            {/* Agent performance radar */}
-            <AgentRadarCard />
+            {/* Agent performance radar — hidden in 6月 portal variant */}
+            {!isJuneVariant && <AgentRadarCard />}
 
             {/* Daily must-see */}
             <div className="surface-card surface-card-hover p-5">
@@ -747,7 +757,8 @@ export default function AgentPortalDashboardContent({
               </div>
             </div>
 
-            {/* Shift info */}
+            {/* Shift info — hidden in 6月 portal variant */}
+            {!isJuneVariant && (
             <div className="surface-card surface-card-hover p-5">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -800,6 +811,7 @@ export default function AgentPortalDashboardContent({
                 ))}
               </div>
             </div>
+            )}
 
           </aside>
         </div>

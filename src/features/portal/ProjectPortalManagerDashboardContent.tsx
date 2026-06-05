@@ -62,6 +62,11 @@ type ManagerPortalDashboardContentProps = {
   onOpenCourseList?: () => void;
   onOpenSummaryManagement?: () => void;
   isDirector?: boolean;
+  /**
+   * When true (个人门户（6月）variant), hide 待学习课程 and 班次信息.
+   * Leaves the regular 个人门户 untouched.
+   */
+  isJuneVariant?: boolean;
 };
 
 type MetricCardData = {
@@ -1052,10 +1057,12 @@ function ChartPanel() {
 }
 
 function RightPanel({
+  isJuneVariant = false,
   onOpenMessageService,
   onOpenRankingDetail,
   onOpenScheduleDisplay,
 }: {
+  isJuneVariant?: boolean;
   onOpenMessageService: () => void;
   onOpenRankingDetail: () => void;
   onOpenScheduleDisplay: () => void;
@@ -1229,7 +1236,8 @@ function RightPanel({
         </div>
       </div>
 
-      {/* ========== Shift ========== */}
+      {/* ========== Shift — hidden in 6月 portal variant ========== */}
+      {!isJuneVariant && (
       <div className="surface-card p-5">
         <div className="mb-4 flex items-center justify-between">
           <SectionTitle title="班次信息" gradient="from-accent-500 to-accent-400" />
@@ -1291,6 +1299,7 @@ function RightPanel({
           ))}
         </div>
       </div>
+      )}
     </aside>
   );
 }
@@ -1322,6 +1331,7 @@ export default function ProjectPortalManagerDashboardContent({
   onOpenCourseList,
   onOpenSummaryManagement,
   isDirector = false,
+  isJuneVariant = false,
 }: ManagerPortalDashboardContentProps) {
   const [breakdownLabel, setBreakdownLabel] = useState<string | null>(null);
   const handleTodayTodoClick = (key: TodayTodoKey) => {
@@ -1340,8 +1350,9 @@ export default function ProjectPortalManagerDashboardContent({
         break;
     }
   };
-  const todayTodoItems =
-    onlineFilter === '在线' ? onlineTodoItems : hotlineTodoItems;
+  const todayTodoItems = (
+    onlineFilter === '在线' ? onlineTodoItems : hotlineTodoItems
+  ).filter((item) => !isJuneVariant || item.key !== 'course-list');
   void trendMonth;
   void personnelDate;
   void personnelFocusMetric;
@@ -1444,6 +1455,7 @@ export default function ProjectPortalManagerDashboardContent({
           </div>
 
           <RightPanel
+            isJuneVariant={isJuneVariant}
             onOpenMessageService={onOpenMessageService}
             onOpenRankingDetail={onOpenRankingDetail}
             onOpenScheduleDisplay={onOpenScheduleDisplay}

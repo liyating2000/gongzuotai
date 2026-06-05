@@ -18,6 +18,7 @@ import {
   PhoneForwarded,
   PhoneOff,
   RefreshCw,
+  Search,
   Unlock,
   User,
   UserCog,
@@ -28,6 +29,7 @@ import { useEffect, useRef, useState, type ComponentType } from 'react';
 
 import { cn } from '../../lib/cn';
 import NotificationChatModal from './NotificationChatModal';
+import KnowledgeSearchModal from './KnowledgeSearchModal';
 import type { MainTab, SecondaryMainTab } from './mainTabs';
 import {
   userRoleDescriptions,
@@ -138,6 +140,7 @@ export default function MainHeader({
   const breakMenuRef = useRef<HTMLDivElement | null>(null);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [isKnowledgeSearchOpen, setIsKnowledgeSearchOpen] = useState(false);
 
   // Dialer state
   const [dialNumber, setDialNumber] = useState('');
@@ -566,6 +569,15 @@ export default function MainHeader({
         <div className="flex shrink-0 items-center gap-3">
           <button
             type="button"
+            onClick={() => setIsKnowledgeSearchOpen(true)}
+            aria-label="知识搜索"
+            title="知识搜索"
+            className="focus-ring relative flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-brand-50 hover:text-brand-600"
+          >
+            <Search size={17} />
+          </button>
+          <button
+            type="button"
             onClick={() => setIsChatModalOpen(true)}
             aria-label="通知"
             title="通知"
@@ -783,6 +795,11 @@ export default function MainHeader({
       <NotificationChatModal
         isOpen={isChatModalOpen}
         onClose={() => setIsChatModalOpen(false)}
+      />
+
+      <KnowledgeSearchModal
+        isOpen={isKnowledgeSearchOpen}
+        onClose={() => setIsKnowledgeSearchOpen(false)}
       />
 
       {callTransferModal ? (

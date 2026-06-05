@@ -5,6 +5,7 @@
  * without circular imports.
  */
 export type MainTab =
+  | '个人门户（6月）'
   | '个人门户'
   | '呼叫工作台'
   | '在线工作台'
@@ -31,5 +32,5 @@ export type MainTab =
   | '小结管理'
   | '预约回电管理';
 
-export type PrimaryMainTab = '个人门户' | '呼叫工作台' | '在线工作台';
+export type PrimaryMainTab = '个人门户（6月）' | '个人门户' | '呼叫工作台' | '在线工作台';
 export type SecondaryMainTab = Exclude<MainTab, PrimaryMainTab>;

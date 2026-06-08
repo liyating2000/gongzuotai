@@ -146,6 +146,8 @@ import ProblemClassificationSearchModal, {
 import SchoolSearchModal, { type SchoolRecord } from './features/workbench/SchoolSearchModal';
 import CreateTpdWorkOrderModal from './features/workbench/CreateTpdWorkOrderModal';
 import AttachmentQueryModal from './features/workbench/AttachmentQueryModal';
+import SmsSendModal from './features/workbench/SmsSendModal';
+import EmailSendModal from './features/workbench/EmailSendModal';
 import CallWorkbenchContentView from './features/call-workbench/CallWorkbenchContent';
 import CallRightSidebar from './features/call-workbench/CallRightSidebar';
 import {
@@ -1364,7 +1366,6 @@ const onlineVisitorTagClasses = {
   yellow: 'border-yellow-200 bg-yellow-50 text-yellow-600',
 } as const;
 const onlineConversationSummaryClasses = {
-  history: 'border-l-[3px] border-l-[#7cd9cb] bg-[#f2fcf8]',
   transfer: 'border-l-[3px] border-l-[#f4b988] bg-[#fff7ee]',
   opener: 'border-l-[3px] border-l-[#d7e2ef] bg-[#f8fbff]',
 } as const;
@@ -1384,11 +1385,6 @@ const onlineSessionBaseDetails: Record<string, OnlineSessionCoreDetail> = {
       { label: '已购学习机', cls: onlineVisitorTagClasses.indigo },
     ],
     summaryCards: [
-      {
-        title: '历史会话纪要',
-        body: '用户此前多次咨询学习机续航、配件更换以及以旧换新政策，已完成一次屏幕贴膜补发，最近一次咨询集中在电池使用时长。',
-        cls: onlineConversationSummaryClasses.history,
-      },
       {
         title: '本次转接纪要',
         body: '用户反馈移动端学习机充满电后连续使用约 2 小时即提示低电量，希望确认是否属于异常损耗以及是否支持售后检测。',
@@ -1427,11 +1423,6 @@ const onlineSessionBaseDetails: Record<string, OnlineSessionCoreDetail> = {
       { label: '对学习机有兴趣', cls: onlineVisitorTagClasses.yellow },
     ],
     summaryCards: [
-      {
-        title: '历史会话纪要',
-        body: '用户在此前多次会话中，曾咨询过账户提现规则、银行卡绑定流程以及交易限额调整等问题，前期客服已为用户讲解基础操作步骤并推送相关指引文档，用户暂行卡绑定问题已完成处理。',
-        cls: onlineConversationSummaryClasses.history,
-      },
       {
         title: '本次转接纪要',
         body: '用户本次发起会话，反馈账户进行提现操作时提示限额不足无法完成提现，希望调整账户提现限额或对话中机器人已向用户推送自动调整限额的路径。',
@@ -1478,11 +1469,6 @@ const onlineSessionBaseDetails: Record<string, OnlineSessionCoreDetail> = {
     ],
     summaryCards: [
       {
-        title: '历史会话纪要',
-        body: '用户为首次咨询，来自快手直播间流量入口，重点关注活动价、赠品和是否支持 12 期免息。',
-        cls: onlineConversationSummaryClasses.history,
-      },
-      {
         title: '本次转接纪要',
         body: '机器人已告知直播间基础优惠，用户进一步追问活动结束时间和是否可以叠加新人券，希望人工确认。',
         cls: onlineConversationSummaryClasses.transfer,
@@ -1510,11 +1496,6 @@ const onlineSessionBaseDetails: Record<string, OnlineSessionCoreDetail> = {
       { label: '待回访', cls: onlineVisitorTagClasses.orange },
     ],
     summaryCards: [
-      {
-        title: '历史会话纪要',
-        body: '用户上周浏览过学习机详情页和套餐对比页，曾短暂咨询过“标准版和旗舰版区别”，未完成留资。',
-        cls: onlineConversationSummaryClasses.history,
-      },
       {
         title: '本次转接纪要',
         body: '本次再次进入页面，用户询问拍照批改、英语口语评测以及是否支持离线资源下载，希望获取更直观的功能对比。',
@@ -1549,11 +1530,6 @@ const onlineSessionBaseDetails: Record<string, OnlineSessionCoreDetail> = {
     ],
     summaryCards: [
       {
-        title: '历史会话纪要',
-        body: '用户来自企业微信小程序入口，曾查看“客户管理”“知识库服务”和“权限协同”相关页面，对 SaaS 方案有初步了解。',
-        cls: onlineConversationSummaryClasses.history,
-      },
-      {
         title: '本次转接纪要',
         body: '机器人已推送客户管理页面知识库说明，用户想进一步确认是否支持多角色协同和表单化沉淀客户信息。',
         cls: onlineConversationSummaryClasses.transfer,
@@ -1586,11 +1562,6 @@ const onlineSessionBaseDetails: Record<string, OnlineSessionCoreDetail> = {
       { label: '情绪稳定', cls: onlineVisitorTagClasses.teal },
     ],
     summaryCards: [
-      {
-        title: '历史会话纪要',
-        body: '用户最近一周多次通过公众号查询订单物流，曾创建一条“补发配件”工单，目前处于仓储发货阶段。',
-        cls: onlineConversationSummaryClasses.history,
-      },
       {
         title: '本次转接纪要',
         body: '机器人已返回物流单号，用户继续追问预计送达时间，并希望确认补发件和主订单是否同包裹发出。',
@@ -1626,11 +1597,6 @@ const onlineSessionBaseDetails: Record<string, OnlineSessionCoreDetail> = {
     ],
     summaryCards: [
       {
-        title: '历史会话纪要',
-        body: '用户来自抖音直播回流流量，已浏览套餐详情页和用户评价页，重点关注高配版价格与售后年限。',
-        cls: onlineConversationSummaryClasses.history,
-      },
-      {
         title: '本次转接纪要',
         body: '机器人已推送基础优惠信息，用户继续询问高配版和标准版差价来源，以及是否支持 7 天无理由退货。',
         cls: onlineConversationSummaryClasses.transfer,
@@ -1664,11 +1630,6 @@ const onlineSessionBaseDetails: Record<string, OnlineSessionCoreDetail> = {
       { label: '待补资料', cls: onlineVisitorTagClasses.yellow },
     ],
     summaryCards: [
-      {
-        title: '历史会话纪要',
-        body: '用户此前因订单退款进度缓慢发起过两次咨询，已提交退款申请和支付凭证，目前工单处于人工复核阶段。',
-        cls: onlineConversationSummaryClasses.history,
-      },
       {
         title: '本次转接纪要',
         body: '用户询问退款状态并希望人工加急审核，系统已记录诉求并提示需补充银行卡尾号信息。',
@@ -3679,6 +3640,8 @@ export default function App() {
   const [activeErrorTab, setActiveErrorTab] = useState<ErrorTabKey>('critical');
   const [showCreateTpdModal, setShowCreateTpdModal] = useState(false);
   const [showAttachmentQueryModal, setShowAttachmentQueryModal] = useState<'call' | 'online' | null>(null);
+  const [showSmsSendModal, setShowSmsSendModal] = useState(false);
+  const [showEmailSendModal, setShowEmailSendModal] = useState(false);
   const [errorModalPage, setErrorModalPage] = useState(1);
   const [callHistoryTab, setCallHistoryTab] = useState<WorkbenchHistoryTab>('通话历史');
   const [callSmsHistoryDateRange, setCallSmsHistoryDateRange] = useState<HistoryDateRangeValue>({
@@ -5113,7 +5076,7 @@ export default function App() {
                 <button
                   key={item.label}
                   type="button"
-                  onClick={item.label === '附件查询' ? () => setShowAttachmentQueryModal('call') : undefined}
+                  onClick={item.label === '附件查询' ? () => setShowAttachmentQueryModal('call') : item.label === '短信' ? () => setShowSmsSendModal(true) : item.label === '邮箱' ? () => setShowEmailSendModal(true) : undefined}
                   className="rounded-lg border border-slate-100 bg-[#f7f8fb] px-2.5 py-3.5 text-center transition-colors hover:border-slate-200 hover:bg-white"
                 >
                   {item.imageSrc ? (
@@ -6256,6 +6219,8 @@ export default function App() {
       onBlacklist={handleOpenCallBlockConfirm}
       onOpenTaggingModal={() => handleOpenTaggingModal('call')}
       onAttachmentQuery={() => setShowAttachmentQueryModal('call')}
+      onSmsSend={() => setShowSmsSendModal(true)}
+      onEmailSend={() => setShowEmailSendModal(true)}
     />
   );
 
@@ -6465,6 +6430,8 @@ export default function App() {
           onBlacklist={handleOpenCallBlockConfirm}
           onOpenTaggingModal={() => handleOpenTaggingModal('call')}
           onAttachmentQuery={() => setShowAttachmentQueryModal('call')}
+          onSmsSend={() => setShowSmsSendModal(true)}
+          onEmailSend={() => setShowEmailSendModal(true)}
         />
       }
       rightSidebar={callRightSidebarContent}
@@ -6596,6 +6563,8 @@ export default function App() {
           composerMessageIconSrc={chatMessageIcon}
           onUtilityItemClick={(label) => {
             if (label === '附件查询') setShowAttachmentQueryModal('online');
+            if (label === '短信') setShowSmsSendModal(true);
+            if (label === '邮箱') setShowEmailSendModal(true);
           }}
         />
         </div>
@@ -7931,6 +7900,16 @@ export default function App() {
         isOpen={showCreateTpdModal}
         onClose={() => setShowCreateTpdModal(false)}
         onConfirm={() => setShowCreateTpdModal(false)}
+      />
+      <SmsSendModal
+        isOpen={showSmsSendModal}
+        onClose={() => setShowSmsSendModal(false)}
+        onConfirm={() => setShowSmsSendModal(false)}
+      />
+      <EmailSendModal
+        isOpen={showEmailSendModal}
+        onClose={() => setShowEmailSendModal(false)}
+        onConfirm={() => setShowEmailSendModal(false)}
       />
       <AttachmentQueryModal
         isOpen={showAttachmentQueryModal !== null}

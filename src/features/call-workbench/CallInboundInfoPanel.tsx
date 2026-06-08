@@ -76,6 +76,8 @@ type CallInboundInfoPanelProps = {
   onBlacklist?: (anchor: { x: number; y: number }) => void;
   onOpenTaggingModal?: () => void;
   onAttachmentQuery?: () => void;
+  onSmsSend?: () => void;
+  onEmailSend?: () => void;
 };
 
 export default function CallInboundInfoPanel({
@@ -86,6 +88,8 @@ export default function CallInboundInfoPanel({
   onBlacklist,
   onOpenTaggingModal,
   onAttachmentQuery,
+  onSmsSend,
+  onEmailSend,
 }: CallInboundInfoPanelProps) {
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const queueTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -196,27 +200,6 @@ export default function CallInboundInfoPanel({
         {!hideDetails ? (
         <>
         {(() => {
-          const isCollapsed = collapsedSummarySections['history'] ?? false;
-          return (
-            <div className="rounded-[10px] border-l-[3px] border-l-accent-400 bg-accent-50/60 px-3 py-2.5 text-[12px] leading-5 text-slate-600">
-              <button
-                type="button"
-                aria-expanded={!isCollapsed}
-                onClick={() => toggleSummarySection('history')}
-                className="focus-ring flex w-full items-center justify-between gap-2 rounded-md text-left text-[12px] font-semibold uppercase tracking-wide text-accent-700"
-              >
-                <span>历史通话纪要</span>
-                {isCollapsed ? (
-                  <ChevronRight size={14} className="text-accent-500" />
-                ) : (
-                  <ChevronDown size={14} className="text-accent-500" />
-                )}
-              </button>
-              {!isCollapsed ? <p className="mt-1 text-slate-700">{profile.ivrPath}</p> : null}
-            </div>
-          );
-        })()}
-        {(() => {
           const isCollapsed = collapsedSummarySections['transfer'] ?? false;
           return (
             <div className="mt-4 rounded-[10px] border-l-[3px] border-l-amber-400 bg-amber-50/70 px-3 py-2.5 text-[12px] leading-5 text-slate-600">
@@ -326,7 +309,7 @@ export default function CallInboundInfoPanel({
             <button
               key={`call-frequently-used-${label}`}
               type="button"
-              onClick={label === '附件查询' ? onAttachmentQuery : undefined}
+              onClick={label === '附件查询' ? onAttachmentQuery : label === '短信' ? onSmsSend : label === '邮箱' ? onEmailSend : undefined}
               className="focus-ring group relative rounded-lg p-1.5 transition-all duration-200 hover:bg-brand-50 hover:text-brand-600"
             >
               <span className="pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-[10px] text-white opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100">

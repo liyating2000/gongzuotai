@@ -829,7 +829,7 @@ function MetricCard({
   );
 }
 
-function ChartPanel() {
+function ChartPanel({ isJuneVariant = false }: { isJuneVariant?: boolean }) {
   const [groupType, setGroupType] = useState<'日' | '周' | '月'>('日');
   const [tooltip, setTooltip] = useState<ChartTooltipState>({
     visible: false,
@@ -887,7 +887,7 @@ function ChartPanel() {
   return (
     <div className={cn('relative', dashboardPanelClassName)}>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <SectionTitle title="业务量与人力时均分布" gradient="from-accent-500 to-accent-400" />
+        <SectionTitle title={isJuneVariant ? "业务量时均分布" : "业务量与人力时均分布"} gradient="from-accent-500 to-accent-400" />
         <div className="relative flex items-center rounded-full border border-slate-200 bg-slate-50/80 p-1">
           {(['日', '周', '月'] as const).map((option) => {
             const active = groupType === option;
@@ -949,7 +949,7 @@ function ChartPanel() {
               </text>
             ))}
 
-            {activeManpowerTicks.map((tick) => (
+            {!isJuneVariant && activeManpowerTicks.map((tick) => (
               <text
                 key={`manpower-${tick}`}
                 x={chartCanvasWidth - rightPadding + 4}
@@ -983,9 +983,9 @@ function ChartPanel() {
               );
             })}
 
-            <polyline points={manpowerPoints} fill="none" stroke="#f5384a" strokeWidth={2} strokeDasharray="5 4" />
+            {!isJuneVariant && <polyline points={manpowerPoints} fill="none" stroke="#f5384a" strokeWidth={2} strokeDasharray="5 4" />}
 
-            {activeChartData.map((item, index) => {
+            {!isJuneVariant && activeChartData.map((item, index) => {
               const cx = leftPadding + index * pointSpacing + pointSpacing / 2;
               const cy = chartHeight - (item.manpower / activeManpowerMax) * chartHeight;
 
@@ -1026,10 +1026,12 @@ function ChartPanel() {
           <span className="h-3 w-4 rounded-sm bg-gradient-to-b from-brand-500 to-brand-400" />
           业务量
         </span>
+        {!isJuneVariant && (
         <span className="flex items-center gap-1.5 text-rose-500">
           <span className="h-[3px] w-5 rounded-full bg-rose-500" />
           人力
         </span>
+        )}
       </div>
 
       {tooltip.visible ? (
@@ -1045,11 +1047,13 @@ function ChartPanel() {
             <span className="text-slate-500">业务量：</span>
             <span className="tabular-nums font-semibold text-slate-800">{tooltip.business.toLocaleString()}</span>
           </div>
+          {!isJuneVariant && (
           <div className="flex items-center gap-1.5">
             <span className="h-[2px] w-2 flex-shrink-0 bg-rose-500" />
             <span className="text-slate-500">人力：</span>
             <span className="tabular-nums font-semibold text-slate-800">{tooltip.manpower}</span>
           </div>
+          )}
         </div>
       ) : null}
     </div>
@@ -1352,7 +1356,7 @@ export default function ProjectPortalManagerDashboardContent({
   };
   const todayTodoItems = (
     onlineFilter === '在线' ? onlineTodoItems : hotlineTodoItems
-  ).filter((item) => !isJuneVariant || item.key !== 'course-list');
+  ).filter((item) => !isJuneVariant || (item.key !== 'course-list' && item.key !== 'work-order'));
   void trendMonth;
   void personnelDate;
   void personnelFocusMetric;
@@ -1451,7 +1455,7 @@ export default function ProjectPortalManagerDashboardContent({
               onOpenBreakdown={setBreakdownLabel}
             />
             <MetricFluctuationPanel channel={onlineFilter} />
-            <ChartPanel />
+            <ChartPanel isJuneVariant={isJuneVariant} />
           </div>
 
           <RightPanel

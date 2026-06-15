@@ -355,7 +355,7 @@ export default function AgentPortalDashboardContent({
             {showTodayTodo ? (
               <TodayTodoPanel
                 items={(isOnlineView ? onlineTodoItems : hotlineTodoItems).filter(
-                  (item) => !isJuneVariant || item.key !== 'course-list'
+                  (item) => !isJuneVariant || (item.key !== 'course-list' && item.key !== 'work-order')
                 )}
                 onItemClick={handleTodayTodoClick}
               />
@@ -501,9 +501,10 @@ export default function AgentPortalDashboardContent({
               </div>
             </section>
 
-            {/* Recent work orders (top) + Learning recommendations (below) */}
+            {/* Learning recommendations (below) */}
             <div className="space-y-6">
-              {/* Recent work orders */}
+              {/* Recent work orders — hidden in 6月 portal variant */}
+              {!isJuneVariant && (
               <section className="surface-card flex min-h-[360px] flex-col p-6">
                 <div className="mb-5 flex items-center justify-between">
                   <h3 className="text-[15px] font-bold tracking-tight text-slate-800">最近工单</h3>
@@ -572,6 +573,7 @@ export default function AgentPortalDashboardContent({
                   </div>
                 </div>
               </section>
+              )}
 
               {/* Learning recommendations — hidden in 6月 portal variant */}
               {!isJuneVariant && (
